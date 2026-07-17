@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit the General Settings page to add a ZIMRA section -->
+    <record id="res_config_settings_view_form_zimra" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.zimra</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.action_general_configuration"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="ZIMRA Fiscalisation" data-key="l10n_zw_fiscalisation" string="ZIMRA Fiscalisation">
+                    <h2>ZIMRA Fiscalisation</h2>
+
+                    <div class="row mt16 o_settings_container">
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label string="Environment"/>
+                                <div class="text-muted">
+                                    Select Test for development, Production when going live.
+                                </div>
+                                <div class="content-group mt8">
+                                    <div class="row">
+                                        <label string="Base URL" class="col-lg-4 o_light_label" for="zimra_base_url"/>
+                                        <field name="zimra_base_url" class="col-lg-8"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label string="Device Credentials"/>
+                                <div class="text-muted">
+                                    Details from the ZIMRA FDMS portal.
+                                </div>
+                                <div class="content-group mt8">
+                                    <div class="row">
+                                        <label string="Device ID" class="col-lg-4 o_light_label" for="zimra_device_id"/>
+                                        <field name="zimra_device_id" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Serial Number" class="col-lg-4 o_light_label" for="zimra_serial_no"/>
+                                        <field name="zimra_serial_no" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Device Model Name" class="col-lg-4 o_light_label" for="zimra_device_model_name"/>
+                                        <field name="zimra_device_model_name" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Device Model Version" class="col-lg-4 o_light_label" for="zimra_device_model_version"/>
+                                        <field name="zimra_device_model_version" class="col-lg-8"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label string="Certificate Paths"/>
+                                <div class="text-muted">
+                                    Paths to the certificate and private key files on the server.
+                                </div>
+                                <div class="content-group mt8">
+                                    <div class="row">
+                                        <label string="Certificate Path" class="col-lg-4 o_light_label" for="zimra_cert_path"/>
+                                        <field name="zimra_cert_path" class="col-lg-8"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Private Key Path" class="col-lg-4 o_light_label" for="zimra_key_path"/>
+                                        <field name="zimra_key_path" class="col-lg-8"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label string="Fiscal Day Status"/>
+                                <div class="text-muted">
+                                    Current state of the fiscal register.
+                                </div>
+                                <div class="content-group mt8">
+                                    <div class="row">
+                                        <label string="Status" class="col-lg-4 o_light_label" for="zimra_fiscal_day_status"/>
+                                        <field name="zimra_fiscal_day_status" class="col-lg-8" readonly="1"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Fiscal Day No." class="col-lg-4 o_light_label" for="zimra_fiscal_day_no"/>
+                                        <field name="zimra_fiscal_day_no" class="col-lg-8" readonly="1"/>
+                                    </div>
+                                    <div class="row">
+                                        <label string="Receipt Counter" class="col-lg-4 o_light_label" for="zimra_receipt_counter"/>
+                                        <field name="zimra_receipt_counter" class="col-lg-8" readonly="1"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

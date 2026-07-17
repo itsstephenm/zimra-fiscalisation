@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Add ZIMRA fields to the Account Tax form -->
+    <record id="view_tax_form_zimra" model="ir.ui.view">
+        <field name="name">account.tax.form.zimra</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="ZIMRA Fiscalisation" name="zimra">
+                    <group col="2">
+                        <group string="ZIMRA Tax Mapping">
+                            <field name="zimra_tax_id"
+                                   help="The numeric Tax ID from ZIMRA's GetConfig endpoint (e.g. 513)."/>
+                            <field name="zimra_tax_code"
+                                   help="Single letter tax code used in hashing (e.g. A, B, C, D)."/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
