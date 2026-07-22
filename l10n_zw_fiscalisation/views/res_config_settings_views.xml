@@ -21,8 +21,8 @@
                                 </div>
                                 <div class="content-group mt8">
                                     <div class="row">
-                                        <label string="Base URL" class="col-lg-4 o_light_label" for="zimra_base_url"/>
-                                        <field name="zimra_base_url" class="col-lg-8"/>
+                                        <label string="Base URL" class="col-lg-4 o_light_label" for="l10n_zw_base_url"/>
+                                        <field name="l10n_zw_base_url" class="col-lg-8"/>
                                     </div>
                                 </div>
                             </div>
@@ -36,20 +36,20 @@
                                 </div>
                                 <div class="content-group mt8">
                                     <div class="row">
-                                        <label string="Device ID" class="col-lg-4 o_light_label" for="zimra_device_id"/>
-                                        <field name="zimra_device_id" class="col-lg-8"/>
+                                        <label string="Device ID" class="col-lg-4 o_light_label" for="l10n_zw_device_id"/>
+                                        <field name="l10n_zw_device_id" class="col-lg-8"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Serial Number" class="col-lg-4 o_light_label" for="zimra_serial_no"/>
-                                        <field name="zimra_serial_no" class="col-lg-8"/>
+                                        <label string="Serial Number" class="col-lg-4 o_light_label" for="l10n_zw_serial_no"/>
+                                        <field name="l10n_zw_serial_no" class="col-lg-8"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Device Model Name" class="col-lg-4 o_light_label" for="zimra_device_model_name"/>
-                                        <field name="zimra_device_model_name" class="col-lg-8"/>
+                                        <label string="Device Model Name" class="col-lg-4 o_light_label" for="l10n_zw_device_model_name"/>
+                                        <field name="l10n_zw_device_model_name" class="col-lg-8"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Device Model Version" class="col-lg-4 o_light_label" for="zimra_device_model_version"/>
-                                        <field name="zimra_device_model_version" class="col-lg-8"/>
+                                        <label string="Device Model Version" class="col-lg-4 o_light_label" for="l10n_zw_device_model_version"/>
+                                        <field name="l10n_zw_device_model_version" class="col-lg-8"/>
                                     </div>
                                 </div>
                             </div>
@@ -63,12 +63,12 @@
                                 </div>
                                 <div class="content-group mt8">
                                     <div class="row">
-                                        <label string="Certificate Path" class="col-lg-4 o_light_label" for="zimra_cert_path"/>
-                                        <field name="zimra_cert_path" class="col-lg-8"/>
+                                        <label string="Certificate Path" class="col-lg-4 o_light_label" for="l10n_zw_cert_path"/>
+                                        <field name="l10n_zw_cert_path" class="col-lg-8"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Private Key Path" class="col-lg-4 o_light_label" for="zimra_key_path"/>
-                                        <field name="zimra_key_path" class="col-lg-8"/>
+                                        <label string="Private Key Path" class="col-lg-4 o_light_label" for="l10n_zw_key_path"/>
+                                        <field name="l10n_zw_key_path" class="col-lg-8"/>
                                     </div>
                                 </div>
                             </div>
@@ -82,16 +82,16 @@
                                 </div>
                                 <div class="content-group mt8">
                                     <div class="row">
-                                        <label string="Status" class="col-lg-4 o_light_label" for="zimra_fiscal_day_status"/>
-                                        <field name="zimra_fiscal_day_status" class="col-lg-8" readonly="1"/>
+                                        <label string="Status" class="col-lg-4 o_light_label" for="l10n_zw_fiscal_day_status"/>
+                                        <field name="l10n_zw_fiscal_day_status" class="col-lg-8" readonly="1"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Fiscal Day No." class="col-lg-4 o_light_label" for="zimra_fiscal_day_no"/>
-                                        <field name="zimra_fiscal_day_no" class="col-lg-8" readonly="1"/>
+                                        <label string="Fiscal Day No." class="col-lg-4 o_light_label" for="l10n_zw_fiscal_day_no"/>
+                                        <field name="l10n_zw_fiscal_day_no" class="col-lg-8" readonly="1"/>
                                     </div>
                                     <div class="row">
-                                        <label string="Receipt Counter" class="col-lg-4 o_light_label" for="zimra_receipt_counter"/>
-                                        <field name="zimra_receipt_counter" class="col-lg-8" readonly="1"/>
+                                        <label string="Receipt Counter" class="col-lg-4 o_light_label" for="l10n_zw_receipt_counter"/>
+                                        <field name="l10n_zw_receipt_counter" class="col-lg-8" readonly="1"/>
                                     </div>
                                 </div>
                             </div>

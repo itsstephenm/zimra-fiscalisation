@@ -8,22 +8,22 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     # ── ZIMRA Status Fields ────────────────────────────────────────────────────
-    zimra_receipt_id = fields.Char(string='ZIMRA Receipt ID', readonly=True, copy=False)
-    zimra_operation_id = fields.Char(string='ZIMRA Operation ID', readonly=True, copy=False)
-    zimra_receipt_global_no = fields.Integer(string='ZIMRA Receipt No.', readonly=True, copy=False)
-    zimra_status = fields.Selection([
+    l10n_zw_receipt_id = fields.Char(string='ZIMRA Receipt ID', readonly=True, copy=False)
+    l10n_zw_operation_id = fields.Char(string='ZIMRA Operation ID', readonly=True, copy=False)
+    l10n_zw_receipt_global_no = fields.Integer(string='ZIMRA Receipt No.', readonly=True, copy=False)
+    l10n_zw_status = fields.Selection([
         ('not_submitted', 'Not Submitted'),
         ('submitted', 'Submitted'),
         ('error', 'Submission Error'),
     ], string='ZIMRA Status', default='not_submitted', readonly=True, copy=False)
-    zimra_error_message = fields.Text(string='ZIMRA Error', readonly=True, copy=False)
+    l10n_zw_error_message = fields.Text(string='ZIMRA Error', readonly=True, copy=False)
 
     def action_post(self):
         """Override invoice confirmation to hook into ZIMRA fiscalisation."""
         res = super(AccountMove, self).action_post()
         for move in self:
             # Only process outgoing invoices/credit notes with ZIMRA configured
-            if move.move_type in ('out_invoice', 'out_refund') and move.company_id.zimra_device_id:
+            if move.move_type in ('out_invoice', 'out_refund') and move.company_id.l10n_zw_device_id:
                 move._submit_to_zimra()
         return res
 
@@ -36,39 +36,39 @@ class AccountMove(models.Model):
         from .zimra_client import ZimraClient
 
         client = ZimraClient(
-            base_url=company.zimra_base_url or 'https://fdmsapitest.zimra.co.zw',
-            device_id=company.zimra_device_id,
-            cert_path=company.zimra_cert_path,
-            key_path=company.zimra_key_path,
-            device_model_name=company.zimra_device_model_name or 'Server',
-            device_model_version=company.zimra_device_model_version or 'v1',
+            base_url=company.l10n_zw_base_url or 'https://fdmsapitest.zimra.co.zw',
+            device_id=company.l10n_zw_device_id,
+            cert_path=company.l10n_zw_cert_path,
+            key_path=company.l10n_zw_key_path,
+            device_model_name=company.l10n_zw_device_model_name or 'Server',
+            device_model_version=company.l10n_zw_device_model_version or 'v1',
         )
 
         try:
             payload = self._prepare_zimra_payload()
-            previous_hash = company.zimra_last_receipt_hash or ''
+            previous_hash = company.l10n_zw_last_receipt_hash or ''
             result = client.submit_receipt(payload, previous_hash)
 
             # Increment counter and save new hash
-            receipt_global_no = company.zimra_increment_receipt_counter()
+            receipt_global_no = company.l10n_zw_increment_receipt_counter()
             new_hash = result.get('receiptDeviceSignature', {}).get('hash', '')
-            company.sudo().write({'zimra_last_receipt_hash': new_hash})
+            company.sudo().write({'l10n_zw_last_receipt_hash': new_hash})
 
             # Write ZIMRA response back to invoice
             self.write({
-                'zimra_receipt_id': result.get('receiptID', ''),
-                'zimra_operation_id': result.get('operationID', ''),
-                'zimra_receipt_global_no': receipt_global_no,
-                'zimra_status': 'submitted',
-                'zimra_error_message': False,
+                'l10n_zw_receipt_id': result.get('receiptID', ''),
+                'l10n_zw_operation_id': result.get('operationID', ''),
+                'l10n_zw_receipt_global_no': receipt_global_no,
+                'l10n_zw_status': 'submitted',
+                'l10n_zw_error_message': False,
             })
             _logger.info("ZIMRA: Invoice %s submitted successfully. Receipt ID: %s", self.name, result.get('receiptID'))
 
         except Exception as e:
             error_msg = str(e)
             self.write({
-                'zimra_status': 'error',
-                'zimra_error_message': error_msg,
+                'l10n_zw_status': 'error',
+                'l10n_zw_error_message': error_msg,
             })
             _logger.error("ZIMRA: Submission failed for invoice %s: %s", self.name, error_msg)
             # We do NOT raise so that the invoice is still confirmed in Odoo
@@ -89,7 +89,7 @@ class AccountMove(models.Model):
         receipt_type = receipt_type_map.get(self.move_type, 'FISCALINVOICE')
 
         # ── 2. Receipt Counter ───────────────────────────────────────────────
-        receipt_counter = company.zimra_receipt_counter + 1  # next counter
+        receipt_counter = company.l10n_zw_receipt_counter + 1  # next counter
 
         # ── 3. Receipt Date ──────────────────────────────────────────────────
         invoice_date = self.invoice_date or fields.Date.today()
@@ -141,8 +141,8 @@ class AccountMove(models.Model):
         receipt_taxes = []
         for tax, amounts in tax_groups.items():
             receipt_taxes.append({
-                'taxID': tax.zimra_tax_id or 0,
-                'taxCode': tax.zimra_tax_code or 'A',
+                'taxID': tax.l10n_zw_tax_id or 0,
+                'taxCode': tax.l10n_zw_tax_code or 'A',
                 'taxPercent': tax.amount if tax.amount_type == 'percent' else 0.0,
                 'taxAmount': round(amounts['taxAmount'], 2),
                 'salesAmountWithTax': round(amounts['salesAmountWithTax'], 2),
@@ -154,7 +154,7 @@ class AccountMove(models.Model):
         for idx, line in enumerate(self.invoice_line_ids.filtered(
             lambda l: l.display_type not in ('line_section', 'line_note')
         )):
-            tax_code = line.tax_ids[0].zimra_tax_code if line.tax_ids and line.tax_ids[0].zimra_tax_code else 'A'
+            tax_code = line.tax_ids[0].l10n_zw_tax_code if line.tax_ids and line.tax_ids[0].l10n_zw_tax_code else 'A'
             receipt_lines.append({
                 'receiptLineNo': idx + 1,
                 'receiptLineHSCode': '',

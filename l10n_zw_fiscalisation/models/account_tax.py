@@ -8,12 +8,12 @@ class AccountTax(models.Model):
     """
     _inherit = 'account.tax'
 
-    zimra_tax_id = fields.Integer(
+    l10n_zw_tax_id = fields.Integer(
         string='ZIMRA Tax ID',
         default=0,
         help="The numeric Tax ID returned by ZIMRA's GetConfig endpoint (e.g. 513 for Non-VAT 0%)."
     )
-    zimra_tax_code = fields.Char(
+    l10n_zw_tax_code = fields.Char(
         string='ZIMRA Tax Code',
         size=1,
         help="The single-letter tax code used in the ZIMRA receipt hash (e.g. 'A', 'B', 'C', 'D')."

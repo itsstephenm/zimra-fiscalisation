@@ -12,22 +12,22 @@ class PosOrder(models.Model):
     _inherit = 'pos.order'
 
     # ── ZIMRA Status Fields ────────────────────────────────────────────────────
-    zimra_receipt_id = fields.Char(string='ZIMRA Receipt ID', readonly=True, copy=False)
-    zimra_operation_id = fields.Char(string='ZIMRA Operation ID', readonly=True, copy=False)
-    zimra_receipt_global_no = fields.Integer(string='ZIMRA Receipt No.', readonly=True, copy=False)
-    zimra_status = fields.Selection([
+    l10n_zw_receipt_id = fields.Char(string='ZIMRA Receipt ID', readonly=True, copy=False)
+    l10n_zw_operation_id = fields.Char(string='ZIMRA Operation ID', readonly=True, copy=False)
+    l10n_zw_receipt_global_no = fields.Integer(string='ZIMRA Receipt No.', readonly=True, copy=False)
+    l10n_zw_status = fields.Selection([
         ('not_submitted', 'Not Submitted'),
         ('submitted', 'Submitted'),
         ('error', 'Submission Error'),
     ], string='ZIMRA Status', default='not_submitted', readonly=True, copy=False)
-    zimra_error_message = fields.Text(string='ZIMRA Error', readonly=True, copy=False)
-    zimra_qr_url = fields.Char(string='ZIMRA QR URL', readonly=True, copy=False)
+    l10n_zw_error_message = fields.Text(string='ZIMRA Error', readonly=True, copy=False)
+    l10n_zw_qr_url = fields.Char(string='ZIMRA QR URL', readonly=True, copy=False)
 
     def action_pos_order_paid(self):
         """Override the POS order paid action to hook into ZIMRA fiscalisation."""
         res = super(PosOrder, self).action_pos_order_paid()
         for order in self:
-            if order.company_id.zimra_device_id:
+            if order.company_id.l10n_zw_device_id:
                 order._submit_pos_to_zimra()
         return res
 
@@ -39,45 +39,45 @@ class PosOrder(models.Model):
         from .zimra_client import ZimraClient
 
         client = ZimraClient(
-            base_url=company.zimra_base_url or 'https://fdmsapitest.zimra.co.zw',
-            device_id=company.zimra_device_id,
-            cert_path=company.zimra_cert_path,
-            key_path=company.zimra_key_path,
-            device_model_name=company.zimra_device_model_name or 'Server',
-            device_model_version=company.zimra_device_model_version or 'v1',
+            base_url=company.l10n_zw_base_url or 'https://fdmsapitest.zimra.co.zw',
+            device_id=company.l10n_zw_device_id,
+            cert_path=company.l10n_zw_cert_path,
+            key_path=company.l10n_zw_key_path,
+            device_model_name=company.l10n_zw_device_model_name or 'Server',
+            device_model_version=company.l10n_zw_device_model_version or 'v1',
         )
 
         try:
             payload = self._prepare_zimra_pos_payload()
-            previous_hash = company.zimra_last_receipt_hash or ''
+            previous_hash = company.l10n_zw_last_receipt_hash or ''
             result = client.submit_receipt(payload, previous_hash)
 
             # Increment counter and save new hash
-            receipt_global_no = company.zimra_increment_receipt_counter()
+            receipt_global_no = company.l10n_zw_increment_receipt_counter()
             # The hash returned in the signature from our own engine
             new_hash = result.get('receiptDeviceSignature', {}).get('hash', previous_hash)
-            company.sudo().write({'zimra_last_receipt_hash': new_hash})
+            company.sudo().write({'l10n_zw_last_receipt_hash': new_hash})
 
             # Build ZIMRA QR Code URL
             # Format: https://fdms.zimra.co.zw/receipts/verify?deviceID=XXX&receiptNo=YYY
-            base = (company.zimra_base_url or '').replace('fdmsapitest', 'fdms').replace('/api', '')
-            qr_url = f"{base}/receipts/verify?deviceID={company.zimra_device_id}&receiptNo={receipt_global_no}"
+            base = (company.l10n_zw_base_url or '').replace('fdmsapitest', 'fdms').replace('/api', '')
+            qr_url = f"{base}/receipts/verify?deviceID={company.l10n_zw_device_id}&receiptNo={receipt_global_no}"
 
             self.write({
-                'zimra_receipt_id': result.get('receiptID', ''),
-                'zimra_operation_id': result.get('operationID', ''),
-                'zimra_receipt_global_no': receipt_global_no,
-                'zimra_status': 'submitted',
-                'zimra_error_message': False,
-                'zimra_qr_url': qr_url,
+                'l10n_zw_receipt_id': result.get('receiptID', ''),
+                'l10n_zw_operation_id': result.get('operationID', ''),
+                'l10n_zw_receipt_global_no': receipt_global_no,
+                'l10n_zw_status': 'submitted',
+                'l10n_zw_error_message': False,
+                'l10n_zw_qr_url': qr_url,
             })
             _logger.info("ZIMRA: POS Order %s submitted. Receipt ID: %s", self.name, result.get('receiptID'))
 
         except Exception as e:
             error_msg = str(e)
             self.write({
-                'zimra_status': 'error',
-                'zimra_error_message': error_msg,
+                'l10n_zw_status': 'error',
+                'l10n_zw_error_message': error_msg,
             })
             _logger.error("ZIMRA: POS Order %s submission failed: %s", self.name, error_msg)
             # Do NOT raise — the POS sale must be allowed to complete even if ZIMRA is down.
@@ -90,7 +90,7 @@ class PosOrder(models.Model):
         """
         self.ensure_one()
         company = self.company_id
-        receipt_counter = company.zimra_receipt_counter + 1
+        receipt_counter = company.l10n_zw_receipt_counter + 1
 
         # ── Receipt Date ─────────────────────────────────────────────────────
         order_date = self.date_order or fields.Datetime.now()
@@ -134,8 +134,8 @@ class PosOrder(models.Model):
         receipt_taxes = []
         for tax, amounts in tax_groups.items():
             receipt_taxes.append({
-                'taxID': tax.zimra_tax_id or 0,
-                'taxCode': tax.zimra_tax_code or 'A',
+                'taxID': tax.l10n_zw_tax_id or 0,
+                'taxCode': tax.l10n_zw_tax_code or 'A',
                 'taxPercent': tax.amount if tax.amount_type == 'percent' else 0.0,
                 'taxAmount': round(amounts['taxAmount'], 2),
                 'salesAmountWithTax': round(amounts['salesAmountWithTax'], 2),
@@ -144,7 +144,7 @@ class PosOrder(models.Model):
         # ── Receipt Lines ────────────────────────────────────────────────────
         receipt_lines = []
         for idx, line in enumerate(self.lines):
-            tax_code = line.tax_ids[0].zimra_tax_code if line.tax_ids and line.tax_ids[0].zimra_tax_code else 'A'
+            tax_code = line.tax_ids[0].l10n_zw_tax_code if line.tax_ids and line.tax_ids[0].l10n_zw_tax_code else 'A'
             receipt_lines.append({
                 'receiptLineNo': idx + 1,
                 'receiptLineHSCode': '',
