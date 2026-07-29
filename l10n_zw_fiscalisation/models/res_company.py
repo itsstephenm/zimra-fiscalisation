@@ -1,4 +1,7 @@
 from odoo import models, fields, api
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ResCompany(models.Model):
     _inherit = 'res.company'
@@ -46,6 +49,23 @@ class ResCompany(models.Model):
         string='Last Receipt Hash',
         help="The SHA-256 hash of the last submitted receipt. Used to chain receipts together.",
         default=''
+    )
+
+    # ── ZimRate Automatic Exchange Rate Settings ───────────────────────────────
+    l10n_zw_zimrate_enabled = fields.Boolean(
+        string='Enable ZimRate Auto-Fetch',
+        default=False,
+        help=(
+            "When enabled, a daily cron job will fetch the official RBZ exchange rate "
+            "from ZimRate (zimrate.statotec.com) and update Odoo's currency rates automatically.\n\n"
+            "NOTE: ZimRate is an unofficial third-party aggregator. If it is unavailable, "
+            "you must update the exchange rate manually via Accounting → Configuration → Currencies."
+        )
+    )
+    l10n_zw_zimrate_currency_id = fields.Many2one(
+        'res.currency',
+        string='Foreign Currency to Update',
+        help="The non-base currency to update from ZimRate (typically USD when the company currency is ZWG)."
     )
 
     def l10n_zw_increment_receipt_counter(self):

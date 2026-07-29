@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Inherit the POS OrderReceipt to inject ZIMRA fiscal details -->
+    <t t-name="l10n_zw_fiscalisation.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+        
+        <!-- Add ZIMRA Receipt header below the company info -->
+        <xpath expr="//div[hasclass('pos-receipt-contact')]" position="after">
+            <div t-if="receipt.l10n_zw_receipt_global_no" class="pos-receipt-center-align" style="margin-top: 10px; margin-bottom: 10px; border-bottom: 1px dashed black; border-top: 1px dashed black; padding: 5px 0;">
+                <div style="font-weight: bold; font-size: 110%;">ZIMRA FISCAL RECEIPT</div>
+                <div>Receipt No: <t t-esc="receipt.l10n_zw_receipt_global_no"/></div>
+                <div>Device ID: <t t-esc="receipt.l10n_zw_device_id"/></div>
+            </div>
+        </xpath>
+
+        <!-- Add QR Code at the very bottom of the receipt -->
+        <xpath expr="//div[hasclass('pos-receipt-order-data')]" position="after">
+            <div t-if="receipt.l10n_zw_qr_url" class="pos-receipt-center-align" style="margin-top: 15px;">
+                <div>Scan to verify with ZIMRA:</div>
+                <img t-att-src="'/report/barcode/?type=QR&amp;value=' + receipt.l10n_zw_qr_url + '&amp;width=150&amp;height=150'" style="width:150px; height:150px; margin-top: 5px;"/>
+            </div>
+        </xpath>
+
+    </t>
+
+</templates>

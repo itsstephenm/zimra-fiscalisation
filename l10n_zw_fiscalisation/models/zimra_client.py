@@ -75,6 +75,13 @@ class ZimraClient:
         # Add to receipt
         receipt_data["receiptDeviceSignature"] = signature_data
         
+        return self._post_receipt(receipt_data)
+
+    def _post_receipt(self, receipt_data):
+        """
+        Posts a pre-signed receipt payload to ZIMRA.
+        Used by the offline queue.
+        """
         url = self._get_url("SubmitReceipt")
         payload = {
             "deviceID": int(self.device_id),
@@ -160,6 +167,91 @@ class ZimraClient:
             
         # PDF states: Signature = RSA(x1||...||xn, d, n)
         # Using PKCS1v15 padding as per ZIMRA standard for SHA256withRSA
+        signature = private_key.sign(
+            concatenated.encode('utf-8'),
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+        signature_base64 = base64.b64encode(signature).decode('utf-8')
+        
+        return {
+            "hash": hash_base64,
+            "signature": signature_base64
+        }
+
+    def _generate_fiscal_day_signature(self, fiscal_day_no, fiscal_day_date, fiscal_day_counters):
+        """
+        Generates the ZIMRA-compliant hash and RSA signature for a Fiscal Day Close.
+        """
+        import hashlib
+        import base64
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives import serialization
+        
+        device_id = str(self.device_id)
+        fiscal_day_no_str = str(fiscal_day_no)
+        # fiscalDayDate is YYYY-MM-DD
+        
+        # Sort counters: Type (Enum order), Currency (asc), TaxID/MoneyType (asc)
+        counter_type_enum = {
+            "SALEBYTAX": 0,
+            "SALETAXBYTAX": 1,
+            "CREDITNOTEBYTAX": 2,
+            "CREDITNOTETAXBYTAX": 3,
+            "DEBITNOTEBYTAX": 4,
+            "DEBITNOTETAXBYTAX": 5,
+            "BALANCEBYMONEYTYPE": 6,
+        }
+        
+        def counter_sort_key(c):
+            type_val = c.get("fiscalCounterType", "").upper()
+            money_enum = {
+                "CASH": 0,
+                "CARD": 1,
+                "MOBILEWALLET": 2,
+                "COUPON": 3,
+                "CREDIT": 4,
+                "BANKTRANSFER": 5,
+                "OTHER": 6
+            }
+            return (
+                counter_type_enum.get(type_val, 99),
+                int(c.get("fiscalCounterTaxID", 0)),
+                c.get("fiscalCounterCurrency", "").upper(),
+                money_enum.get(c.get("fiscalCounterMoneyType", "").upper(), 99)
+            )
+            
+        sorted_counters = sorted(fiscal_day_counters, key=counter_sort_key)
+        
+        counters_str = ""
+        for c in sorted_counters:
+            c_type = c.get("fiscalCounterType", "").upper()
+            c_curr = c.get("fiscalCounterCurrency", "").upper()
+            
+            c_tax_percent = ""
+            if "fiscalCounterTaxPercent" in c:
+                percent_val = c.get("fiscalCounterTaxPercent")
+                c_tax_percent = f"{float(percent_val):.2f}"
+            elif "fiscalCounterMoneyType" in c:
+                c_tax_percent = c.get("fiscalCounterMoneyType", "").upper()
+                
+            c_val_str = str(int(round(float(c.get("fiscalCounterValue", 0.0)) * 100)))
+            
+            counters_str += f"{c_type}{c_curr}{c_tax_percent}{c_val_str}"
+            
+        concatenated = f"{device_id}{fiscal_day_no_str}{fiscal_day_date}{counters_str}"
+        
+        hash_obj = hashlib.sha256(concatenated.encode('utf-8'))
+        hash_digest = hash_obj.digest()
+        hash_base64 = base64.b64encode(hash_digest).decode('utf-8')
+        
+        with open(self.key_path, "rb") as key_file:
+            private_key = serialization.load_pem_private_key(
+                key_file.read(),
+                password=None,
+            )
+            
         signature = private_key.sign(
             concatenated.encode('utf-8'),
             padding.PKCS1v15(),

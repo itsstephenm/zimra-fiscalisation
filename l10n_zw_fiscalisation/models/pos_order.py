@@ -50,13 +50,41 @@ class PosOrder(models.Model):
         try:
             payload = self._prepare_zimra_pos_payload()
             previous_hash = company.l10n_zw_last_receipt_hash or ''
-            result = client.submit_receipt(payload, previous_hash)
-
-            # Increment counter and save new hash
+            
+            # 1. Generate Signature Locally
+            signature_data = client._generate_signature(payload, previous_hash)
+            payload["receiptDeviceSignature"] = signature_data
+            
+            # 2. Increment counter and save new hash locally IMMEDIATELY
             receipt_global_no = company.l10n_zw_increment_receipt_counter()
-            # The hash returned in the signature from our own engine
-            new_hash = result.get('receiptDeviceSignature', {}).get('hash', previous_hash)
+            new_hash = signature_data.get('hash', previous_hash)
             company.sudo().write({'l10n_zw_last_receipt_hash': new_hash})
+            
+            # 3. Find the currently open fiscal day (required for Z-Report aggregation)
+            open_day = self.env['l10n_zw.fiscal.day'].search([
+                ('company_id', '=', company.id),
+                ('state', '=', 'open'),
+            ], limit=1)
+
+            # 4. Add to Queue with denormalised fields for CloseDay aggregation
+            import json as _json
+            self.env['l10n_zw.receipt.queue'].create({
+                'company_id': company.id,
+                'pos_order_id': self.id,
+                'fiscal_day_id': open_day.id if open_day else False,
+                'receipt_global_no': receipt_global_no,
+                'receipt_currency': payload.get('receiptCurrency', ''),
+                'receipt_total': payload.get('receiptTotal', 0.0),
+                'taxes_json': _json.dumps(payload.get('receiptTaxes', [])),
+                'payload_json': _json.dumps(payload),
+                'status': 'pending',
+            })
+            
+            # 5. Attempt to process queue immediately
+            try:
+                self.env['l10n_zw.receipt.queue']._process_queue()
+            except Exception:
+                pass
 
             # Build ZIMRA QR Code URL
             # Format: https://fdms.zimra.co.zw/receipts/verify?deviceID=XXX&receiptNo=YYY
@@ -64,14 +92,10 @@ class PosOrder(models.Model):
             qr_url = f"{base}/receipts/verify?deviceID={company.l10n_zw_device_id}&receiptNo={receipt_global_no}"
 
             self.write({
-                'l10n_zw_receipt_id': result.get('receiptID', ''),
-                'l10n_zw_operation_id': result.get('operationID', ''),
                 'l10n_zw_receipt_global_no': receipt_global_no,
-                'l10n_zw_status': 'submitted',
-                'l10n_zw_error_message': False,
+                'l10n_zw_status': 'not_submitted',
                 'l10n_zw_qr_url': qr_url,
             })
-            _logger.info("ZIMRA: POS Order %s submitted. Receipt ID: %s", self.name, result.get('receiptID'))
 
         except Exception as e:
             error_msg = str(e)
@@ -79,9 +103,7 @@ class PosOrder(models.Model):
                 'l10n_zw_status': 'error',
                 'l10n_zw_error_message': error_msg,
             })
-            _logger.error("ZIMRA: POS Order %s submission failed: %s", self.name, error_msg)
-            # Do NOT raise — the POS sale must be allowed to complete even if ZIMRA is down.
-            # Offline queuing will be handled in a future milestone.
+            _logger.error("ZIMRA: POS Order %s local signing failed: %s", self.name, error_msg)
 
     def _prepare_zimra_pos_payload(self):
         """

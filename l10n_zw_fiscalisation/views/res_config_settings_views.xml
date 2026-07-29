@@ -97,6 +97,39 @@
                             </div>
                         </div>
 
+                        <div class="col-12 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label string="Exchange Rates (ZimRate)"/>
+                                <div class="text-muted">
+                                    Optionally fetch the official RBZ rate automatically from
+                                    <strong>ZimRate</strong> (zimrate.statotec.com) each day.
+                                    ZimRate is an <em>unofficial</em> third-party aggregator — if unavailable,
+                                    update the rate manually via <strong>Accounting → Currencies</strong>.
+                                </div>
+                                <div class="content-group mt8">
+                                    <div class="row">
+                                        <label string="Enable ZimRate Auto-Fetch" class="col-lg-4 o_light_label" for="l10n_zw_zimrate_enabled"/>
+                                        <field name="l10n_zw_zimrate_enabled" class="col-lg-8" widget="boolean_toggle"/>
+                                    </div>
+                                    <div class="row" attrs="{'invisible': [('l10n_zw_zimrate_enabled', '=', False)]}">
+                                        <label string="Foreign Currency to Update" class="col-lg-4 o_light_label" for="l10n_zw_zimrate_currency_id"/>
+                                        <field name="l10n_zw_zimrate_currency_id" class="col-lg-8"
+                                               help="Typically USD if your company currency is ZWG."
+                                               attrs="{'required': [('l10n_zw_zimrate_enabled', '=', True)]}"/>
+                                    </div>
+                                    <div class="row" attrs="{'invisible': [('l10n_zw_zimrate_enabled', '=', False)]}">
+                                        <div class="col-lg-8 offset-lg-4">
+                                            <p class="text-warning">
+                                                <i class="fa fa-exclamation-triangle"/> Also enable the
+                                                <strong>ZIMRA: Fetch ZimRate Exchange Rates</strong> cron job
+                                                in Technical → Scheduled Actions for automatic daily updates.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </xpath>

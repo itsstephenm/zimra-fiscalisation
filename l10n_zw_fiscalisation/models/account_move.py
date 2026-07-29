@@ -47,22 +47,46 @@ class AccountMove(models.Model):
         try:
             payload = self._prepare_zimra_payload()
             previous_hash = company.l10n_zw_last_receipt_hash or ''
-            result = client.submit_receipt(payload, previous_hash)
-
-            # Increment counter and save new hash
+            
+            # 1. Generate Signature Locally
+            signature_data = client._generate_signature(payload, previous_hash)
+            payload["receiptDeviceSignature"] = signature_data
+            
+            # 2. Increment counter and save new hash locally IMMEDIATELY
             receipt_global_no = company.l10n_zw_increment_receipt_counter()
-            new_hash = result.get('receiptDeviceSignature', {}).get('hash', '')
+            new_hash = signature_data.get('hash', previous_hash)
             company.sudo().write({'l10n_zw_last_receipt_hash': new_hash})
-
-            # Write ZIMRA response back to invoice
-            self.write({
-                'l10n_zw_receipt_id': result.get('receiptID', ''),
-                'l10n_zw_operation_id': result.get('operationID', ''),
-                'l10n_zw_receipt_global_no': receipt_global_no,
-                'l10n_zw_status': 'submitted',
-                'l10n_zw_error_message': False,
+            
+            # 3. Find the currently open fiscal day (required for Z-Report aggregation)
+            open_day = self.env['l10n_zw.fiscal.day'].search([
+                ('company_id', '=', company.id),
+                ('state', '=', 'open'),
+            ], limit=1)
+            
+            # 4. Add to Queue with denormalised fields for CloseDay aggregation
+            import json as _json
+            self.env['l10n_zw.receipt.queue'].create({
+                'company_id': company.id,
+                'move_id': self.id,
+                'fiscal_day_id': open_day.id if open_day else False,
+                'receipt_global_no': receipt_global_no,
+                'receipt_currency': payload.get('receiptCurrency', ''),
+                'receipt_total': payload.get('receiptTotal', 0.0),
+                'taxes_json': _json.dumps(payload.get('receiptTaxes', [])),
+                'payload_json': _json.dumps(payload),
+                'status': 'pending',
             })
-            _logger.info("ZIMRA: Invoice %s submitted successfully. Receipt ID: %s", self.name, result.get('receiptID'))
+            
+            # 5. Attempt to process queue immediately (fail silently if offline)
+            try:
+                self.env['l10n_zw.receipt.queue']._process_queue()
+            except Exception:
+                pass
+                
+            self.write({
+                'l10n_zw_receipt_global_no': receipt_global_no,
+                'l10n_zw_status': 'not_submitted',  # updated by queue processor on success
+            })
 
         except Exception as e:
             error_msg = str(e)
@@ -70,9 +94,7 @@ class AccountMove(models.Model):
                 'l10n_zw_status': 'error',
                 'l10n_zw_error_message': error_msg,
             })
-            _logger.error("ZIMRA: Submission failed for invoice %s: %s", self.name, error_msg)
-            # We do NOT raise so that the invoice is still confirmed in Odoo
-            # The accountant can retry via a button later
+            _logger.error("ZIMRA: Invoice %s local signing failed: %s", self.name, error_msg)
 
     def _prepare_zimra_payload(self):
         """

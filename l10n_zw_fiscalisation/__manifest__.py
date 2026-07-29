@@ -17,16 +17,23 @@
     """,
     'author': 'Vast-Solutions',
     'website': '',
-    'depends': [
-        'account',
-        'point_of_sale',
-        'base_setup',
-    ],
+    'depends': ['base', 'account', 'point_of_sale'],
     'data': [
+        'security/ir.model.access.csv',
+        'data/ir_cron.xml',
+        'data/ir_sequence.xml',
         'views/res_config_settings_views.xml',
         'views/account_tax_views.xml',
         'views/account_move_views.xml',
+        'views/l10n_zw_fiscal_day_views.xml',
+        'views/pos_session_views.xml',
     ],
+    'assets': {
+        'point_of_sale._assets_pos': [
+            'l10n_zw_fiscalisation/static/src/xml/OrderReceipt.xml',
+            'l10n_zw_fiscalisation/static/src/js/pos_order.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
