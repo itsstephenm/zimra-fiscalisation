@@ -204,27 +204,33 @@ class L10nZwFiscalDay(models.Model):
             )
 
         closed_at = fields.Datetime.now()
-        
+        # Format as YYYY-MM-DDThh:mm:ss — used in both the signature hash and the payload
+        closed_at_str = closed_at.strftime('%Y-%m-%dT%H:%M:%S')
+        reconciliation_mode = "AUTO"  # Always AUTO for online (real-time) devices
+
         client = self._get_zimra_client()
-        
+
         # Compute Counters
         fiscal_day_counters = self._compute_fiscal_day_counters()
-        
+
         # Compute Signature
         fiscal_day_date = self.opened_at.strftime('%Y-%m-%d')
         signature_data = client._generate_fiscal_day_signature(
             fiscal_day_no=self.fiscal_day_no,
             fiscal_day_date=fiscal_day_date,
-            fiscal_day_counters=fiscal_day_counters
+            fiscal_day_counters=fiscal_day_counters,
         )
 
         # Build precise payload as per FDMS spec for Online CloseDay
         payload = {
-            "deviceID": int(company.l10n_zw_device_id),
-            "fiscalDayNo": self.fiscal_day_no,
-            "fiscalDayCounters": fiscal_day_counters,
+            "deviceID"                : int(company.l10n_zw_device_id),
+            "fiscalDayNo"             : self.fiscal_day_no,
+            "fiscalDayDate"           : fiscal_day_date,
+            "fiscalDayUpdated"        : closed_at_str,
+            "reconciliationMode"      : reconciliation_mode,
+            "fiscalDayCounters"       : fiscal_day_counters,
             "fiscalDayDeviceSignature": signature_data,
-            "receiptCounter": company.l10n_zw_receipt_counter
+            "receiptCounter"          : company.l10n_zw_receipt_counter,
         }
 
         _logger.info(

@@ -89,11 +89,18 @@ def get_status(client):
     return resp.json()
 
 
-def close_day(client, fiscal_day_no, fiscal_day_date, counters, receipt_counter):
+def close_day(client, fiscal_day_no, fiscal_day_date, counters, receipt_counter,
+              fiscal_day_updated=None, reconciliation_mode="AUTO"):
     """
     Build and POST a CloseDay request.
     Returns (http_ok: bool, body: dict|str, signature_hash: str)
+
+    Per ZIMRA FDMS API Spec §13.3.1 the hash covers:
+      deviceID + fiscalDayNo + fiscalDayDate + counters
     """
+    if fiscal_day_updated is None:
+        fiscal_day_updated = ts_now()
+
     sig = client._generate_fiscal_day_signature(
         fiscal_day_no=fiscal_day_no,
         fiscal_day_date=fiscal_day_date,
@@ -102,10 +109,15 @@ def close_day(client, fiscal_day_no, fiscal_day_date, counters, receipt_counter)
     payload = {
         "deviceID"                : int(DEVICE_ID),
         "fiscalDayNo"             : fiscal_day_no,
+        "fiscalDayDate"           : fiscal_day_date,
+        "fiscalDayUpdated"        : fiscal_day_updated,
+        "reconciliationMode"      : reconciliation_mode,
         "fiscalDayCounters"       : counters,
         "fiscalDayDeviceSignature": sig,
         "receiptCounter"          : receipt_counter,
     }
+    print(f"    fiscalDayUpdated = {fiscal_day_updated}")
+    print(f"    reconciliationMode = {reconciliation_mode}")
     print(f"    hash  = {sig['hash']}")
     url = client._get_url("CloseDay")
     resp = requests.post(
@@ -122,6 +134,7 @@ def close_day(client, fiscal_day_no, fiscal_day_date, counters, receipt_counter)
         pass
     print(f"    HTTP {resp.status_code}")
     return resp.status_code in (200, 201, 204), body, sig["hash"]
+
 
 
 # ---------------------------------------------------------------------------
@@ -193,16 +206,9 @@ def main():
             {
                 "fiscalCounterType"     : "SaleByTax",
                 "fiscalCounterCurrency" : "USD",
-                "fiscalCounterTaxID"    : tax_id,
-                "fiscalCounterTaxPercent": tax_percent,
+                "fiscalCounterTaxID"    : 513,
+                "fiscalCounterTaxPercent": 0.0,
                 "fiscalCounterValue"    : stale_sale,
-            },
-            {
-                "fiscalCounterType"     : "SaleTaxByTax",
-                "fiscalCounterCurrency" : "USD",
-                "fiscalCounterTaxID"    : tax_id,
-                "fiscalCounterTaxPercent": tax_percent,
-                "fiscalCounterValue"    : stale_tax,
             },
             {
                 "fiscalCounterType"     : "BalanceByMoneyType",
@@ -211,26 +217,40 @@ def main():
                 "fiscalCounterValue"    : stale_sale,
             },
         ]
-        stale_day_date = datetime.date.today().strftime("%Y-%m-%d")
+        stale_day_date = "2026-07-29" # The date Day 1 was actually opened
         ok, body, _ = close_day(client, last_fiscal_day_no, stale_day_date, stale_counters, last_receipt_no)
         pp("CloseDay (stale day) response", body)
         if not ok:
             print("    [ERROR] Could not close the stale day. Cannot continue.")
             sys.exit(1)
 
-        # Wait for the server to process the close before opening a new day.
-        print("    Waiting 3s for server to process CloseDay ...")
-        time.sleep(3)
+        # Poll until the server finishes processing the close (async on ZIMRA side).
+        # FiscalDayCloseInitiated → FiscalDayClosed (success) or FiscalDayCloseFailed (error)
+        print("    Polling for close confirmation (up to 30s) ...")
+        transitional = {"FiscalDayCloseInitiated", "FiscalDayOpen"}
+        new_status = ""
+        closing_error2 = ""
+        for attempt in range(10):
+            time.sleep(3)
+            status2 = get_status(client)
+            new_status    = status2.get("fiscalDayStatus", "")
+            closing_error2 = status2.get("fiscalDayClosingErrorCode", "")
+            print(f"      [{attempt+1}/10] status={new_status}  error={closing_error2 or 'none'}")
+            if new_status not in transitional:
+                break
 
-        # Confirm it's now closed.
-        status2 = get_status(client)
-        pp("GetStatus (post-close)", status2)
-        new_status = status2.get("fiscalDayStatus", "")
-        closing_error2 = status2.get("fiscalDayClosingErrorCode", "")
-        print(f"    New status: {new_status}  error: {closing_error2 or 'none'}")
-        if new_status not in ("FiscalDayClosed",) and new_status in stale_statuses:
-            print("    [ERROR] Day still not closed. Check signature logic.")
+        pp("GetStatus (post-stale-close)", status2)
+
+        if new_status == "FiscalDayClosed":
+            print("    Stale day successfully closed.")
+        elif new_status in stale_statuses:
+            print("    [ERROR] Day still not closed after 30s. Check signature logic.")
             sys.exit(1)
+        else:
+            # FiscalDayCloseInitiated after 30s — ZIMRA server is slow but may still close.
+            # Attempt OpenDay anyway; the server should allow it once processing finishes.
+            print(f"    [WARN] Status still '{new_status}' after 30s — proceeding to OpenDay anyway.")
+
 
     # ── STEP 1: OpenDay ──────────────────────────────────────────────────────
     print("\n[1] OpenDay ...")
@@ -356,6 +376,8 @@ def main():
             "fiscalCounterValue"     : sale_amount,
         },
     ]
+    fiscal_day_counters = [c for c in fiscal_day_counters if c.get("fiscalCounterValue", 0.0) != 0.0]
+
     for c in fiscal_day_counters:
         print(f"      {c}")
 
@@ -366,21 +388,31 @@ def main():
     )
     pp("CloseDay (USD) response", resp_usd)
 
+
     # ── STEP 5: GetStatus — confirm server accepted the close ─────────────────
-    print("\n[5] GetStatus (post-CloseDay) ...")
-    time.sleep(3)
-    try:
-        final_status = get_status(client)
-        pp("GetStatus (final)", final_status)
-        final_day_status = final_status.get("fiscalDayStatus", "")
-        final_close_err  = final_status.get("fiscalDayClosingErrorCode", "")
-        print(f"    fiscalDayStatus: {final_day_status}")
-        if final_close_err:
-            print(f"    closingError   : {final_close_err}")
-    except Exception as e:
-        print(f"    GetStatus FAILED: {e}")
-        final_day_status = "Unknown"
-        final_close_err  = ""
+    print("\n[5] GetStatus (post-CloseDay) — polling up to 30s ...")
+    final_day_status = "Unknown"
+    final_close_err  = ""
+    transitional5    = {"FiscalDayCloseInitiated"}
+    final_status     = {}
+    for attempt in range(10):
+        time.sleep(3)
+        try:
+            final_status     = get_status(client)
+            final_day_status = final_status.get("fiscalDayStatus", "")
+            final_close_err  = final_status.get("fiscalDayClosingErrorCode", "")
+            print(f"      [{attempt+1}/10] status={final_day_status}  error={final_close_err or 'none'}")
+            if final_day_status not in transitional5:
+                break
+        except Exception as e:
+            print(f"    GetStatus FAILED: {e}")
+            break
+
+    pp("GetStatus (final)", final_status)
+    print(f"    fiscalDayStatus: {final_day_status}")
+    if final_close_err:
+        print(f"    closingError   : {final_close_err}")
+
 
     # ── FINAL VERDICT ────────────────────────────────────────────────────────
     print("\n" + "="*60)

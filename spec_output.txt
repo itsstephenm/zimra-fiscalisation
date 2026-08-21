@@ -1,0 +1,590 @@
+
+======================================================================
+PAGE 2
+======================================================================
+Contents
+1. Document summary ............................................................................... 4
+1.1. Definitions .......................................................................... 4
+2. Fiscal Device Gateway usage scenarios ....................................................... 5
+2.1. Device registration ................................................................ 5
+2.2. Fiscal device communication modes ........................................... 5
+2.3. Fiscal day (in online mode) ...................................................... 6
+2.4. Fiscal day (in offline mode) ...................................................... 7
+3. Object statuses .................................................................................... 8
+3.1. Fiscal day statuses ................................................................. 8
+4. Fiscal Device Gateway API interfaces ......................................................... 9
+4.1. verifyTaxpayerInformation ...................................................... 9
+4.2. registerDevice ...................................................................... 9
+4.3. issueCertificate .................................................................. 10
+4.4. getConfig .......................................................................... 11
+4.5. getStatus .......................................................................... 12
+4.6. openDay ........................................................................... 13
+4.7. submitReceipt .................................................................... 13
+4.8. submitFile ......................................................................... 19
+4.8.1. File example.................................................................... 20
+4.9. getFileStatus ...................................................................... 23
+4.10. closeDay ........................................................................... 24
+4.11. getServerCertificate ............................................................ 25
+4.12. ping ................................................................................. 25
+4.13. Users management .............................................................. 26
+4.13.1. User registration process if user registration is finished right away: . 26
+4.13.2. User registration process if user registration is finished after user login:
+27
+4.13.3. getUsersList ................................................................... 27
+4.13.4. login ............................................................................ 28
+4.13.5. createUserBegin .............................................................. 28
+4.13.6. createUserConfirm ........................................................... 29
+4.13.7. sendSecurityCode ............................................................ 29
+4.13.8. sendSecurityCodeContactChange .......................................... 30
+4.13.9. confirmUserContactChange ................................................. 30
+4.13.10. updateUser .................................................................. 30
+4.13.11. changeUserPassword ....................................................... 31
+4.13.12. resetUserPasswordBegin ................................................... 31
+4.13.13. resetUserPasswordConfirm ................................................ 32
+4.14. getStockList ....................................................................... 32
+5. Data Types ........................................................................................ 34
+5.1. Address ............................................................................ 34
+5.2. Contacts ........................................................................... 34
+5.3. SignatureData .................................................................... 34
+5.4. Enums .............................................................................. 34
+5.4.1. DeviceOperatingMode ......................................................... 34
+5.4.2. FiscalDayStatus ................................................................ 34
+5.4.3. FiscalDayReconciliationMode ................................................ 35
+5.4.4. FiscalCounterType ............................................................. 35
+5.4.5. MoneyType...................................................................... 35
+5.4.6. ReceiptType .................................................................... 35
+5.4.7. ReceiptLineType ............................................................... 35
+5.4.8. ReceiptPrintForm .............................................................. 36
+5.4.9. FiscalDayProcessingError ..................................................... 36
+5.4.10. FileProcessingStatus ......................................................... 36
+5.4.11. FileProcessingError ........................................................... 36
+Copyright © ZIMRA 2 of 77
+
+======================================================================
+PAGE 3
+======================================================================
+5.4.12. UserStatus ..................................................................... 37
+5.4.13. SendSecurityCodeTo ......................................................... 37
+6. Fiscal counters ................................................................................... 38
+7. Integration Setup Requirements .............................................................. 39
+7.1. Communication and security protocols ...................................... 39
+7.2. Environment addresses ......................................................... 39
+7.3. Authentication and authorization ............................................ 39
+7.4. Timeout Settings ................................................................. 39
+8. Errors .............................................................................................. 40
+8.1. Http statuses...................................................................... 40
+8.2. Error codes ........................................................................ 40
+8.2.1. Validation errors ............................................................... 41
+9. Requirements for fiscal devices .............................................................. 44
+10. Standard fiscal receipt, invoice and report views ........................................ 46
+10.1. Receipt48 view ................................................................... 46
+10.2. InvoiceA4 view ................................................................... 48
+10.3. Receipt and invoice view fields descriptions ............................... 52
+10.4. Z Report / X Report .............................................................. 56
+10.5. Z report and X report fields description .................................... 57
+11. Receipt QR code rules .......................................................................... 60
+12. Certificate signing request (CSR) and Certificate examples ............................. 61
+12.1. Example keys used .............................................................. 61
+12.1.1. ECC ECDSA on SECG secp256r1 ............................................. 61
+12.1.2. RSA 2048 ....................................................................... 61
+12.2. CSRs and Certificates ........................................................... 63
+12.2.1. ECC ECDSA on SECG secp256r1 ............................................. 63
+12.2.1.1. CSR ........................................................................ 63
+12.2.1.2. Certificate ............................................................... 64
+12.2.2. RSA 2048 ....................................................................... 65
+12.2.2.1. CSR ........................................................................ 65
+12.2.2.2. Certificate ............................................................... 66
+13. Signatures generation and verification rules .............................................. 69
+13.1. Signature an hash generation algorithm .................................... 69
+13.2. Receipt signature generation and verification ............................. 69
+13.2.1. Receipt device signature .................................................... 69
+13.2.2. Receipt FDMS signature ..................................................... 72
+13.3. Fiscal day signature generation and verification .......................... 73
+13.3.1. Fiscal day device signature ................................................. 73
+13.3.2. Fiscal day FDMS signature ................................................... 74
+Copyright © ZIMRA 3 of 77
+
+======================================================================
+PAGE 12
+======================================================================
+Tax:
+Name Type Mandatory Description
+taxID Int Yes Tax ID uniquely identifying a tax. This tax ID must be used in submitting invoices.
+taxPercent Decimal (5,2) No Tax percent. In case of exempt, field will not be returned.
+taxName String (50) Yes Tax name.
+taxValidFrom Date Yes Date from which tax is valid.
+taxValidTill Date No Date till which tax is valid.
+4.5. getStatus
+getStatus endpoint is used to get fiscal day status.
+Request can’t be sent if DeviceOperatingMode is Offline. If DeviceOperatingMode is
+Offline error DEV01 is received.
+Input parameters:
+Name Type Mandatory Description
+deviceID Int Yes Device ID
+Output parameters:
+Name Type Mandatory Description
+operationID String (60) Yes Operation ID assigned by FDMS.
+fiscalDayStatus FiscalDayStatus Yes Device Fiscal day status.
+fiscalDayReconciliationMode FiscalDayReconciliationMode No In case fiscal day status is “FiscalDayClosed” defines
+how it was closed: automatically or manually.
+fiscalDayServerSignature SignatureDataEx No Fiscal day report signature prepared by FDMS.
+This field is returned only when fiscalDaySatus is
+“FiscalDayClosed”.
+This signature is not used in further communication or
+any data preparation for FDMS. It is confirmation
+from FDMS that fiscal day is closed and should be
+stored on device.
+Signature verification rules are described in section
+13.3.
+fiscalDayClosed DateTime No Date and time when fiscal day report was processed,
+and fiscal day status was changed to
+“FiscalDayClosed”. Time is provided in local time
+without time zone information.
+This field is returned only when fiscalDaySatus is
+“FiscalDayClosed”.
+If device has never started a new fiscal day, this field
+is not returned.
+fiscalDayClosingErrorCode FiscalDayProcessingError No Code of error which appears during fiscal day closure.
+Possible codes are defined in section 5.4.9
+FiscalDayProcessingError. This field is returned only
+when fiscalDayStatus is “FiscalDayCloseFailed”.
+fiscalDayCounters FiscalDayCounter array No List of fiscal day counters. This field is returned only
+when fiscalDayStatus is “FiscalDayClosed” and
+fiscalDayReconciliationMode is “Manual”.
+List contains only non-zero value fiscal counters.
+FiscalDayCounter type description provided in
+closeDay endpoint.
+fiscalDayDocumentQuantities FiscalDayDocumentQuantity No List of fiscal day document quantities. This field is
+array returned only when fiscalDayStatus is
+“FiscalDayClosed” and fiscalDayReconciliationMode is
+“Manual”. FiscalDayDocumentQuantity type
+description provided in FiscalDayDocumentQuantity
+table.
+Copyright © ZIMRA 12 of 77
+
+======================================================================
+PAGE 22
+======================================================================
+time zone
+information
+.
+fiscalDayNo Int No Fiscal day
+number
+assigned by
+device.
+If this field
+is not sent,
+FDMS will
+generate
+fiscal day
+number and
+return it to
+device.
+Validation
+rules:
+-
+fiscalDayNo
+must be
+equal to 1
+for the first
+fiscal day of
+fiscal device
+-
+fiscalDayNo
+must be
+greater by
+one from
+the last
+closed fiscal
+day
+fiscalDayNo.
+Output parameters:
+Name Type Mandatory Description
+operationID String Yes Operation ID
+(60) assigned by FDMS.
+fiscalDayNo Int Yes Fiscal day number of
+opened day.
+In case device has
+sent fiscalDayNo in
+request, it is
+returned in this
+field. In case device
+has not sent it, new
+fiscal day number
+will be generated by
+FDMS.
+submitReceipt endpoint description.
+FileFooter:
+Name Type Mandatory Description
+fiscalCounters FiscalDayCounter No List of fiscal counters.
+array Zero value counters must not be submitted to FDMS.
+FiscalDayCounter type description provided in Error! Reference
+source not found.closeDay endpoint.
+fiscalDayDeviceSignature SignatureData Yes SignatureData structure with SHA256 hash of fiscal day report fields
+(hash used for signature) and fiscal day report device signature
+prepared by using device private key as described in section 13.3.
+Validation rules:
+- fiscalDayDeviceSignature must be valid
+receiptCounter Int Yes receiptCounter value of last receipt of current fiscal day.
+Copyright © ZIMRA 22 of 77
+
+======================================================================
+PAGE 24
+======================================================================
+}
+]
+},
+"footer": {
+"fiscalDayCounters": [
+{
+"fiscalCounterType": "SaleByTax",
+"fiscalCounterCurrency": "USD",
+"fiscalCounterTaxPercent": 15,
+"fiscalCounterTaxID": 0,
+"fiscalCounterMoneyType": "Cash",
+"fiscalCounterValue": 28.75
+}
+],
+"fiscalDayDeviceSignature": {
+"hash": "Yjkjy =",
+"signature": "Yy ="
+},
+"receiptCounter": 1,
+"fiscalDayClosed": "2023-05-30T22:38:54"
+}
+}
+Valid sample:
+{
+"header": {
+"deviceId": 1111,
+"fiscalDayNo": 6,
+"fiscalDayOpened": "2023-05-30T08:38:54",
+"fileSequence": 2
+},
+"content": {
+"receipts": [
+{
+"receiptType": "fiscalInvoice",
+"receiptCurrency": "USD",
+"receiptCounter": 5,
+"receiptGlobalNo": 1112,
+"invoiceNo": "IV-2023/1256",
+"receiptDate": "2023-05-30T18:38:54",
+"receiptLinesTaxInclusive": true,
+"receiptLines": [
+{
+"receiptLineType": "sale",
+"receiptLineNo": 1,
+"receiptLineHSCode": "85456852",
+"receiptLineName": "Man's shoes",
+"receiptLinePrice": 25,
+"receiptLineQuantity": 1,
+"receiptLineTotal": 25,
+"taxCode": "A",
+"taxPercent": 15,
+"taxID": 1
+}
+],
+"receiptTaxes": [
+{
+"taxCode": "A",
+"taxPercent": 15,
+"taxID": 1,
+"taxAmount": 3.75,
+"salesAmountWithTax": 28.75
+}
+],
+"receiptPayments": [
+{
+"moneyTypeCode": "cash",
+"paymentAmount": 28.75
+}
+],
+"receiptTotal": 28.75,
+"receiptPrintForm": "receipt48",
+"receiptDeviceSignature": {
+"hash": "bGFiYXM=",
+"signature": "bGFiYXM="
+},
+"receiptType": "fiscalInvoice",
+"receiptCurrency": "USD"
+Copyright © ZIMRA 24 of 77
+
+======================================================================
+PAGE 25
+======================================================================
+}
+]
+},
+"footer": {
+"fiscalDayCounters": [
+{
+"fiscalCounterType": "saleByTax",
+"fiscalCounterCurrency": "USD",
+"fiscalCounterTaxPercent": 15,
+"fiscalCounterTaxID": 0,
+"fiscalCounterMoneyType": "cash",
+"fiscalCounterValue": 28.75
+}
+],
+"fiscalDayDeviceSignature": {
+"hash": "bGFiYXM=",
+"signature": "bGFiYXM="
+},
+"receiptCounter": 1,
+"fiscalDayClosed": "2023-05-30T22:38:54"
+}
+}
+4.10. getFileStatus
+getFileStatus endpoint is used by device to get previously sent file processing status
+from FDMS.
+Request can be sent if DeviceOperatingMode is Offline.
+Request will not be accepted, error will be returned to fiscal device (as specified in 8.1
+Http statuses
+API can return such http statuses for errors:
+Http status Description
+400 bad request – the message is malformed and could not be processed by Fiscal Backend Gateway
+401 Authentication error (see Authentication and authorization)
+404 Resource not found (call to not existing endpoint)
+405 method not allowed – trying to access API using unsupported HTTP methos, e.g., POST to get config
+422 Unprocessable Content – the instructions given by fiscal device to Fiscal Backend Gateway are incorrect,
+the response object ProblemDetails should contain ErrorCode to indicate the exact failing condition (e.g.,
+DEV01 – device is blocked and therefore no instructions could be processed from such device)
+500 Infrastructure error – the Fiscal Backend Gateway server is not available, or some infrastructure error
+occurred. The fiscal device should retry to send message later.
+502 Bad gateway - the Fiscal Backend Gateway server could not be contacted. The fiscal device should retry to
+send message later.
+Error codes), in these cases:
+ fiscal device status is other than “Active”;
+ fiscal device operating mode is other than “Offline”;
+ request structure is not valid.
+Input parameters:
+Name Type Mandatory Description
+deviceID Int Yes Device ID.
+operationID String (60) No Unique operation identifier received in 4.9 submitFile response.
+Mandatory if fiscalDayNo is not sent.
+fileUploadedFrom Date Yes Date from when uploaded files are needed. Interval between from and
+to can be no more than 100 days.
+Copyright © ZIMRA 25 of 77
+
+======================================================================
+PAGE 26
+======================================================================
+fileUploadedTill Date Yes Date till when uploaded files are needed. Interval between from and
+to can be no more than 100 days.
+Output parameters:
+Name Type Mandatory Description
+operationID String (60) Yes Operation ID assigned by FDMS.
+fileStatus FileStatus array Yes List of files statuses.
+FileStatus:
+Name Type Mandatory Description
+operationID Int Yes Operation ID received in 4.9 submitFile request.
+fileUploadDate DateTime Yes File placement date and time. Time is provided in local time
+without time zone information.
+deviceId Int Yes Device id.
+fileName String (100) Yes File name
+fileProcessingDate DateTime No Date and time when file processing is finished. Returned if
+fileProcessingStatus is FileProcessingIsSuccessful or
+FileProcessingWithErrors. Time is provided in local time without
+time zone information.
+fileProcessingStatus FileProcessingStatus Yes File processing status. Possible statuses are defined in section
+5.4.10 FileProcessingStatus.
+fileProcessingErrorCode FileProcessingError No List of error codes which appear during submitted file processing,
+array returned if FileProcessingStatus is FileProcessingWithErrors.
+Possible codes are defined in section 5.4.11 FileProcessingError.
+fiscalDayNo Int Yes Fiscal day number.
+fiscalDayOpenedAt DateTime Yes Date and time when fiscal day was opened on a device. Time is
+provided in local time without time zone information.
+fileSequence Int Yes Sequence number of file in fiscal day files sequence.
+ipAddress String (100) Yes Ip address from which file is uploaded.
+4.11. closeDay
+closeDay endpoint is used to initiate fiscal day closure procedure. This method is allowed
+when fiscal days status is “FiscalDayOpened” or “FiscalDayCloseFailed”.
+Request can’t be sent if DeviceOperatingMode is Offline. If DeviceOperatingMode is
+Offline error DEV01 is received.
+In case fiscal day contains at least one “Grey” or “Red” receipt (as specified in 8.2.1.
+Validation errors), FDMS will respond to closeDay request with error (fiscal day will remain
+opened). Otherwise, if fiscal day does not have “Grey” and “Red” receipts, validation of
+submitted closeDay request will be executed. In case of fiscal day validation fails (as specified
+below in “Validation rules”), fiscal day remains opened, and its status is changed to
+“FiscalDayCloseFailed”.
+Input parameters:
+Name Type Mandatory Description
+deviceID Int Yes Device ID
+fiscalDayNo Int Yes Fiscal day number.
+Validation rules:
+- fiscalDayNo must be the same as provided/received fiscalDayNo
+value in openDay request.
+fiscalDayCounters FiscalDayCounters Yes List of fiscal counters.
+array Zero value counters must not be submitted to FDMS.
+Copyright © ZIMRA 26 of 77
+
+======================================================================
+PAGE 27
+======================================================================
+fiscalDayDeviceSignature SignatureData Yes SignatureData structure with SHA256 hash of fiscal day report fields
+(hash used for signature) and fiscal day report device signature
+prepared by using device private key as described in section 13.3.
+Validation rules:
+- fiscalDayDeviceSignature must be valid
+receiptCounter Int Yes receiptCounter value of last receipt of current fiscal day.
+FiscalDayCounter:
+Name Type Mandatory Description
+fiscalCounterType FiscalCounterType Yes Fiscal counter type.
+fiscalCounterCurrency String (3) Yes Fiscal counter currency (ISO 4217 currency code).
+fiscalCounterTaxID Int No* Tax ID of fiscal counter.
+Must be provided for all fiscal counter types “byTax”.
+fiscalCounterTaxPercent Decimal (5,2) No* Tax percentage of fiscal counter.
+Must be provided for all fiscal counter types “byTax”.
+In case of exempt, this field must not be provided.
+fiscalCounterMoneyType MoneyType No* Code of payment mean of fiscal counter.
+Must be provided for fiscal counter type
+“BalanceByMoneyType”.
+fiscalCounterValue Decimal (19,2) Yes Fiscal counter value in counter currency.
+Output parameters:
+Name Type Mandatory Description
+operationID String (60) Yes Operation ID assigned by FDMS.
+4.12. getServerCertificate
+getServerCertificate endpoint is used to retrieve FDMS certificate for FDMS signature
+validation.
+This API endpoint does not require certificate for authentication.
+Input parameters:
+Name Type Mandatory Description
+thumbprint Binary (20) No Thumbprint of FDMS signing certificate which should be returned. If
+field is not provided, currently active FDMS signing certificate is
+returned. Together with the certificate, all certificate chain is
+returned.
+Output parameters:
+Name Type Mandatory Description
+certificate String array Yes FDMS certificate chain (according to x.509 standard) to validate FDMS
+signatures.
+certificateValidTill Date Yes Date till when FDMS signing certificate is valid (despite that in the certificate
+parameter all the certificate chain is returned, this field shows validity time
+of the child certificate in the chain). Value is provided in UTC time.
+Copyright © ZIMRA 27 of 77
+
+======================================================================
+PAGE 76
+======================================================================
+13.3. Fiscal day signature generation and verification
+Fiscal day report hash and signature are generated according to the rules provided in
+section 13.1.
+13.3.1. Fiscal day device signature
+Fields included in fiscal day hash used for device signature are provided below (these
+fields must be included in hash in the same order as provided below):
+Order Field name Description
+1 deviceID Device ID
+2 fiscalDayNo Fiscal day number
+3 fiscalDayDate Fiscal day date (date when fiscal day was opened).
+Date in ISO 8601 format YYYY-MM-DD.
+Example: 2019-09-23
+4 fiscalDayCounters Concatenated fiscal day counter lines, where each line is concatenated in this
+way: fiscalCounterType || fiscalCounterCurrency || fiscalCounterTaxPercent or
+fiscalCounterMoneyType || fiscalCounterValue.
+All text values are concatenated in upper case.
+Amounts are represented in cents.
+Only non-zero value fiscal counters are included in concatenation.
+Fiscal counters are concatenated in this order:
+ fiscalCounterType (in ascending order)
+ fiscalCounterCurrency (in alphabetical ascending order)
+ fiscalCounterTaxID (in ascending order) / fiscalCounterMoneyType (in
+ascending order)
+In case taxPercent is not an integer there should be dot between the integer and
+fractional part. In case of exempt which does not send tax percent value, empty
+value should be used in signature. In case taxPercent is an integer there should be
+value of tax percent, dot and two zeros sent.
+Examples:
+- If taxPercent is 15, value 15.00 must be used in signature.
+- If taxPercent is 14.5 value 14.50 must be used in signature.
+- If taxPercent is 0 value 0.00 must be used in signature.
+Example:
+Name Exmple
+deviceID 321
+fiscalDayNo 84
+fiscalDayDate 2019-09-23
+fiscalDayCounters fiscalCounterType fiscalCounterC fiscalCounterTaxPercent/ fiscalCounterValue
+urrency fiscalCounterMoneyType
+SaleByTax ZWL 23000,00
+SaleByTax ZWL 0 12000,00
+SaleByTax USD 14,5 25,00
+SaleByTax ZWL 15 12,00
+SaleTaxByTax USD 15 2,50
+SaleTaxByTax ZWL 15 2300,00
+BalanceByMoneyType ZWL CARD 15000,00
+BalanceByMoneyType USD CASH 37,00
+BalanceByMoneyType ZWL CASH 20000,00
+Result:
+SALEBYTAXZWL2300000SALEBYTAXZWL0.001200000SALEBYTAXUSD14.502500SALEBYTAXZWL15.001200SA
+LETAXBYTAXUSD15.00250SALETAXBYTAXZWL15.00230000BALANCEBYMONEYTYPEUSDLCASH3700BALANCE
+BYMONEYTYPEZWLCASH2000000BALANCEBYMONEYTYPEZWLCARD1500000
+Result used for hash 321842019-09-
+generation 23SALEBYTAXZWL2300000SALEBYTAXZWL0.001200000SALEBYTAXUSD14.502500SALEBYTAXZWL15.001200
+SALETAXBYTAXUSD15.00250SALETAXBYTAXZWL15.00230000BALANCEBYMONEYTYPEUSDLCASH3700BALAN
+CEBYMONEYTYPEZWLCASH2000000BALANCEBYMONEYTYPEZWLCARD1500000
+Generated hash in OdT8lLI0JXhXl1XQgr64Zb1ltFDksFXThVxqM6O8xZE=
+base64
+representation
+Copyright © ZIMRA 76 of 77
+
+======================================================================
+PAGE 77
+======================================================================
+13.3.2. Fiscal day FDMS signature
+Fiscal day FDMS signature may be verified by decrypting fiscalDayServerSignature with
+FDMS public key and comparing if it matches with prepared fiscal day hash.
+Hash generation algorithm is provided in section 13.1.
+Fields included in fiscal day hash used for FDMS signature are provided below (these
+fields must be included in hash in the same order as provided below):
+Order Field name Description
+1 deviceID Device ID
+2 fiscalDayNo Fiscal day number
+3 fiscalDayDate Fiscal day date (date when fiscal day was opened).
+Date in ISO 8601 format YYYY-MM-DD.
+Example: 2019-09-23
+4 fiscalDayUpdated Date and time when fiscal day was closed.
+Date in ISO 8601 format <date>T<time>, YYYY-MM-DDThh:mm:ss (hours are
+represented in 24 hours format, local time).
+Example: 2019-09-23T14:43:23
+fiscalDayClosed value from response to device.
+5 reconciliationMode Defines how fiscal day was close: automatically or manually.
+Possible values (in upper case):
+- AUTO
+- MANUAL
+6 fiscalDayCounters Concatenated fiscal day counter lines as described above in device signature
+generation.
+7 fiscalDayDeviceSignature Fiscal day signature generated by device. In case fiscal day is closed manually, this
+field is not included into hash for FDMS signature.
+Example:
+Name Exmple
+deviceID 321
+fiscalDayNo 84
+fiscalDayDate 2019-09-23
+fiscalDayUpdated 2019-09-23T22:21:14
+reconciliationMode AUTO
+fiscalDayCounters fiscalCounterType fiscalCounterC fiscalCounterTaxPercent/ fiscalCounterValue
+urrency fiscalCounterMoneyType
+SaleByTax ZWL 23000,00
+SaleByTax ZWL 0 12000,00
+SaleByTax USD 15 25,00
+SaleByTax ZWL 15 12,00
+SaleTaxByTax USD 15 2,50
+SaleTaxByTax ZWL 15 2300,00
+BalanceByMoneyType ZWL CARD 15000,00
+BalanceByMoneyType USD CASH 37,00
+BalanceByMoneyType ZWL CASH 20000,00
+Result:
+SALEBYTAXZWL2300000SALEBYTAXZWL0.001200000SALEBYTAXUSD15.002500SALEBYTAXZWL15.001200SALE
+TAXBYTAXUSD15.00250SALETAXBYTAXZWL15.00230000BALANCEBYMONEYTYPEZWLCARD1500000BALANCEB
+YMONEYTYPEUSDLCASH3700BALANCEBYMONEYTYPEZWLCASH2000000
+fiscalDayDeviceSign YyXTSizBBrMjMk4VQL+sCNr+2AC6aQbDAn9JMV2rk3yJ6MDZwie0wqQW3oisNWrMkeZsuAyFSnFkU2A+pKm91sO
+ature HVdjeRBebjQgAQQIMTCVIcYrx+BizQ7Ib9iCdsVI+Jel2nThqQiQzfRef6EgtgsaIAN+PV55xSrHvPkIe+Bc=
+Result used for 321842019-09-232019-09-
+hash generation 23T22:21:14AUTOSALEBYTAXZWL2300000SALEBYTAXZWL0.001200000SALEBYTAXUSD15.002500SALEBYTAXZ
+WL15.001200SALETAXBYTAXUSD15.00250SALETAXBYTAXZWL15.00230000BALANCEBYMONEYTYPEZWLCARD1
+500000BALANCEBYMONEYTYPEUSDLCASH3700BALANCEBYMONEYTYPEZWLCASH2000000YyXTSizBBrMjMk4VQ
+L+sCNr+2AC6aQbDAn9JMV2rk3yJ6MDZwie0wqQW3oisNWrMkeZsuAyFSnFkU2A+pKm91sOHVdjeRBebjQgAQQI
+MTCVIcYrx+BizQ7Ib9iCdsVI+Jel2nThqQiQzfRef6EgtgsaIAN+PV55xSrHvPkIe+Bc=
+Generated hash in nlqwrAoFAmXLfuMJlQTdS2m0B4d5X1sTJ2gPo5/Dq+s=
+base64
+representation
+Copyright © ZIMRA 77 of 77
