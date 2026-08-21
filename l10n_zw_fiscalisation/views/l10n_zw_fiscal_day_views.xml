@@ -8,8 +8,8 @@
         <field name="arch" type="xml">
             <form string="ZIMRA Fiscal Day">
                 <header>
-                    <button name="action_open_day" string="Open Fiscal Day" type="object" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_close_day" string="Close Fiscal Day (Z-Report)" type="object" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'open')]}"/>
+                    <button name="action_open_day" string="Open Fiscal Day" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_close_day" string="Close Fiscal Day (Z-Report)" type="object" class="oe_highlight" invisible="state != 'open'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,open,closed"/>
                 </header>
                 <sheet>
@@ -31,7 +31,7 @@
                     <group string="Status">
                         <field name="receipts_reported"/>
                         <field name="receipt_counter_closed"/>
-                        <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
+                        <field name="error_message" invisible="not error_message"/>
                     </group>
                 </sheet>
             </form>
