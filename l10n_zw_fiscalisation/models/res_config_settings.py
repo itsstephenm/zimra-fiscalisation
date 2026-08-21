@@ -1,10 +1,79 @@
-from odoo import models, api
+from odoo import models, fields, api
 import logging
 
 _logger = logging.getLogger(__name__)
 
+class ResCompany(models.Model):
+    _inherit = 'res.company'
+
+    l10n_zw_zimrate_enabled = fields.Boolean(string="Enable ZimRate Auto-Fetch", default=False)
+    l10n_zw_zimrate_currency_id = fields.Many2one('res.currency', string="ZimRate Foreign Currency")
+
+
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
+
+    # Environment
+    l10n_zw_base_url = fields.Char(
+        string="ZIMRA Base URL", 
+        default="https://fdmsapitest.zimra.co.zw",
+        config_parameter='l10n_zw.base_url'
+    )
+
+    # Device Credentials
+    l10n_zw_device_id = fields.Integer(
+        string="Device ID", 
+        config_parameter='l10n_zw.device_id'
+    )
+    l10n_zw_serial_no = fields.Char(
+        string="Device Serial Number", 
+        config_parameter='l10n_zw.serial_no'
+    )
+    l10n_zw_device_model_name = fields.Char(
+        string="Device Model Name", 
+        config_parameter='l10n_zw.device_model_name'
+    )
+    l10n_zw_device_model_version = fields.Char(
+        string="Device Model Version", 
+        config_parameter='l10n_zw.device_model_version'
+    )
+
+    # Certificate Paths
+    l10n_zw_cert_path = fields.Char(
+        string="Certificate Path", 
+        default="/path/to/device_cert.pem",
+        config_parameter='l10n_zw.cert_path'
+    )
+    l10n_zw_key_path = fields.Char(
+        string="Private Key Path", 
+        default="/path/to/private_key.pem",
+        config_parameter='l10n_zw.key_path'
+    )
+
+    # Fiscal Day Status
+    l10n_zw_fiscal_day_status = fields.Char(
+        string="Fiscal Day Status", 
+        default="Closed"
+    )
+    l10n_zw_fiscal_day_no = fields.Integer(
+        string="Fiscal Day Number", 
+        default=0
+    )
+    l10n_zw_receipt_counter = fields.Integer(
+        string="Receipt Counter", 
+        default=0
+    )
+
+    # ZimRate Integration Fields (Related to company)
+    l10n_zw_zimrate_enabled = fields.Boolean(
+        string="Enable ZimRate Auto-Fetch",
+        related='company_id.l10n_zw_zimrate_enabled', readonly=False, store=True
+    )
+    l10n_zw_zimrate_currency_id = fields.Many2one(
+        'res.currency', 
+        string="Foreign Currency to Update",
+        related='company_id.l10n_zw_zimrate_currency_id', readonly=False, store=True
+    )
 
     @api.model
     def _l10n_zw_fetch_zimrate(self):
@@ -39,7 +108,6 @@ class ResConfigSettings(models.TransientModel):
                 rates_data = response.json()
 
                 # Find the RBZ rate for the target currency
-                # ZimRate objects typically have: {'currency': 'USD', 'source': 'RBZ', 'rate': 27.34, ...}
                 rbz_rate = None
                 for entry in rates_data:
                     if (
@@ -64,9 +132,6 @@ class ResConfigSettings(models.TransientModel):
                     _logger.error("ZIMRA ZimRate: Could not find any rate for %s in ZimRate response.", foreign_currency.name)
                     continue
 
-                # Odoo stores currency rates as: 1 [company_currency] = rate [foreign_currency]
-                # If company currency is ZWG and foreign is USD:
-                #   ZimRate gives e.g. 27.34 ZWG per 1 USD → Odoo rate = 27.34
                 today = fields.Date.today()
                 existing_rate = self.env['res.currency.rate'].search([
                     ('currency_id', '=', foreign_currency.id),
