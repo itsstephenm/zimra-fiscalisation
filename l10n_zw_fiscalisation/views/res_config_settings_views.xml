@@ -15,7 +15,7 @@
 
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label string="Environment"/>
+                                <span class="o_form_label">Environment</span>
                                 <div class="text-muted">
                                     Select Test for development, Production when going live.
                                 </div>
@@ -30,7 +30,7 @@
 
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label string="Device Credentials"/>
+                                <span class="o_form_label">Device Credentials</span>
                                 <div class="text-muted">
                                     Details from the ZIMRA FDMS portal.
                                 </div>
@@ -57,7 +57,7 @@
 
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label string="Certificate Paths"/>
+                                <span class="o_form_label">Certificate Paths</span>
                                 <div class="text-muted">
                                     Paths to the certificate and private key files on the server.
                                 </div>
@@ -76,7 +76,7 @@
 
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label string="Fiscal Day Status"/>
+                                <span class="o_form_label">Fiscal Day Status</span>
                                 <div class="text-muted">
                                     Current state of the fiscal register.
                                 </div>
@@ -99,7 +99,7 @@
 
                         <div class="col-12 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label string="Exchange Rates (ZimRate)"/>
+                                <span class="o_form_label">Exchange Rates (ZimRate)</span>
                                 <div class="text-muted">
                                     Optionally fetch the official RBZ rate automatically from
                                     <strong>ZimRate</strong> (zimrate.statotec.com) each day.
