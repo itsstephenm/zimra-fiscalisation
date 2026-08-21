@@ -38,18 +38,18 @@
         </field>
     </record>
 
-    <!-- Fiscal Day Tree View -->
+    <!-- Fiscal Day List View -->
     <record id="view_l10n_zw_fiscal_day_tree" model="ir.ui.view">
-        <field name="name">l10n_zw.fiscal.day.tree</field>
+        <field name="name">l10n_zw.fiscal.day.list</field>
         <field name="model">l10n_zw.fiscal.day</field>
         <field name="arch" type="xml">
-            <tree string="ZIMRA Fiscal Days" decoration-info="state == 'draft'" decoration-success="state == 'closed'" decoration-warning="state == 'open'" decoration-danger="state == 'error'">
+            <list string="ZIMRA Fiscal Days" decoration-info="state == 'draft'" decoration-success="state == 'closed'" decoration-warning="state == 'open'" decoration-danger="state == 'error'">
                 <field name="name"/>
                 <field name="fiscal_day_no"/>
                 <field name="opened_at"/>
                 <field name="closed_at"/>
                 <field name="state"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -57,7 +57,7 @@
     <record id="action_l10n_zw_fiscal_day" model="ir.actions.act_window">
         <field name="name">ZIMRA Fiscal Days</field>
         <field name="res_model">l10n_zw.fiscal.day</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="help" type="html">
           <p class="o_view_nocontent_smiling_face">
             Create a new ZIMRA Fiscal Day
