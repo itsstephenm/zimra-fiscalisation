@@ -8,29 +8,8 @@
             <field name="code">model._process_queue()</field>
             <field name="interval_number">5</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
             <field name="doall" eval="False"/>
             <field name="active" eval="True"/>
         </record>
-
-        <!--
-            ZimRate daily exchange rate fetcher.
-            DISABLED by default — only activates for companies with l10n_zw_zimrate_enabled=True.
-            Enable per-company via: Accounting > Settings > ZIMRA Fiscalisation > Enable ZimRate.
-            ZimRate (zimrate.statotec.com) is an unofficial third-party RBZ rate aggregator.
-        -->
-        <record id="ir_cron_zimra_zimrate_fetch" model="ir.cron">
-            <field name="name">ZIMRA: Fetch ZimRate (RBZ) Exchange Rates</field>
-            <field name="model_id" ref="base.model_res_config_settings"/>
-            <field name="state">code</field>
-            <field name="code">model._l10n_zw_fetch_zimrate()</field>
-            <field name="interval_number">1</field>
-            <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
-            <field name="doall" eval="False"/>
-            <!-- Disabled by default — operator must enable per-company in ZIMRA settings -->
-            <field name="active" eval="False"/>
-        </record>
     </data>
 </odoo>
-
