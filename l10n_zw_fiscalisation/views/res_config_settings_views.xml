@@ -111,13 +111,13 @@
                                         <label string="Enable ZimRate Auto-Fetch" class="col-lg-4 o_light_label" for="l10n_zw_zimrate_enabled"/>
                                         <field name="l10n_zw_zimrate_enabled" class="col-lg-8" widget="boolean_toggle"/>
                                     </div>
-                                    <div class="row" attrs="{'invisible': [('l10n_zw_zimrate_enabled', '=', False)]}">
+                                    <div class="row" invisible="not l10n_zw_zimrate_enabled">
                                         <label string="Foreign Currency to Update" class="col-lg-4 o_light_label" for="l10n_zw_zimrate_currency_id"/>
                                         <field name="l10n_zw_zimrate_currency_id" class="col-lg-8"
                                                help="Typically USD if your company currency is ZWG."
-                                               attrs="{'required': [('l10n_zw_zimrate_enabled', '=', True)]}"/>
+                                               required="l10n_zw_zimrate_enabled"/>
                                     </div>
-                                    <div class="row" attrs="{'invisible': [('l10n_zw_zimrate_enabled', '=', False)]}">
+                                    <div class="row" invisible="not l10n_zw_zimrate_enabled">
                                         <div class="col-lg-8 offset-lg-4">
                                             <p class="text-warning">
                                                 <i class="fa fa-exclamation-triangle"/> Also enable the
