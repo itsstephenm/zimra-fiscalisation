@@ -22,9 +22,11 @@
                         invisible="state != 'closing_control' or l10n_zw_fiscal_day_status != 'open'"/>
             </xpath>
             
-            <!-- Add a small status indicator in the form -->
-            <xpath expr="//group[@name='general']" position="inside">
-                <field name="l10n_zw_fiscal_day_id" invisible="not l10n_zw_fiscal_day_id"/>
+            <!-- Add a small status indicator safely inside the main sheet -->
+            <xpath expr="//sheet" position="inside">
+                <group string="ZIMRA Fiscalisation" invisible="not l10n_zw_fiscal_day_id">
+                    <field name="l10n_zw_fiscal_day_id" readonly="1"/>
+                </group>
             </xpath>
         </field>
     </record>
