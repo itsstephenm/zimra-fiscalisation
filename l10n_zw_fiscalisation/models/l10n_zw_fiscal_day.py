@@ -24,12 +24,12 @@ class L10nZwFiscalDay(models.Model):
     opened_at = fields.Datetime(string='Opened At', readonly=True)
     closed_at = fields.Datetime(string='Closed At', readonly=True)
     
-   state = fields.Selection([
+    state = fields.Selection([
         ('draft', 'Draft'),
         ('open', 'Open'),
         ('closed', 'Closed'),
         ('error', 'Error')
-    ], string='Status', default='draft', readonly=False)
+    ], string='Status', default='draft', readonly=True)
     
     receipts_reported = fields.Integer(string='Receipts Reported', readonly=True)
     receipt_counter_closed = fields.Integer(string='Receipt Counter at Close', readonly=True)
@@ -256,14 +256,14 @@ class L10nZwFiscalDay(models.Model):
 
         # Build precise payload as per FDMS spec for Online CloseDay
         payload = {
-            "deviceID"                : int(company.l10n_zw_device_id or 37988),
-            "fiscalDayNo"             : self.fiscal_day_no,
-            "fiscalDayDate"           : fiscal_day_date,
-            "fiscalDayUpdated"        : closed_at_str,
-            "reconciliationMode"      : reconciliation_mode,
-            "fiscalDayCounters"       : fiscal_day_counters,
-            "fiscalDayDeviceSignature": signature_data,
-            "receiptCounter"          : company.l10n_zw_receipt_counter,
+            "deviceID"                    : int(company.l10n_zw_device_id or 37988),
+            "fiscalDayNo"                 : self.fiscal_day_no,
+            "fiscalDayDate"               : fiscal_day_date,
+            "fiscalDayUpdated"            : closed_at_str,
+            "reconciliationMode"          : reconciliation_mode,
+            "fiscalDayCounters"           : fiscal_day_counters,
+            "fiscalDayDeviceSignature"    : signature_data,
+            "receiptCounter"              : company.l10n_zw_receipt_counter,
         }
 
         _logger.info(
