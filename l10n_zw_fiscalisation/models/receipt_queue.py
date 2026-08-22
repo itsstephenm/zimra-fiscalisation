@@ -80,9 +80,21 @@ class L10nZwReceiptQueue(models.Model):
                     'error_message': False
                 })
                 
-                # Extract ID fields flexibly supporting multiple casing formats
-                receipt_id = str(result.get('receiptID') or result.get('receiptId') or result.get('id') or '')
-                operation_id = str(result.get('operationID') or result.get('operationId') or '')
+                # Flexible dynamic parsing for ZIMRA response keys
+                receipt_id = ''
+                operation_id = ''
+                if isinstance(result, dict):
+                    for k, v in result.items():
+                        k_lower = k.lower()
+                        if ('receipt' in k_lower or 'id' in k_lower) and not receipt_id:
+                            receipt_id = str(v)
+                        if 'operation' in k_lower and not operation_id:
+                            operation_id = str(v)
+                    
+                    if not receipt_id:
+                        receipt_id = str(result.get('receiptID') or result.get('receiptId') or result.get('id') or '')
+                    if not operation_id:
+                        operation_id = str(result.get('operationID') or result.get('operationId') or '')
 
                 vals = {
                     'l10n_zw_receipt_id': receipt_id,
