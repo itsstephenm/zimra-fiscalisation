@@ -19,7 +19,8 @@ REGISTER_URL = f"{BASE_URL}/Public/v1/{DEVICE_ID}/RegisterDevice"
 HEADERS = {
     "Content-Type": "application/json",
     "DeviceModelName": "Virtual Server",
-    "DeviceModelVersionNo": "v1"
+    "DeviceModelVersionNo": "v1",
+    "DeviceModelVersion": "v1"
 }
 
 def generate_keys_and_csr():
