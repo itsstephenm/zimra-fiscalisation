@@ -27,6 +27,8 @@
         'views/account_move_views.xml',
         'views/l10n_zw_fiscal_day_views.xml',
         'views/pos_session_views.xml',
+        'reports/fiscal_day_report.xml',
+        'reports/fiscal_day_template.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [

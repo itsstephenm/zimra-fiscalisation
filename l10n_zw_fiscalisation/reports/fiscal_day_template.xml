@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_fiscal_day_document">
+        <t t-call="web.external_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page">
+                    <div class="row mb-4">
+                        <div class="col-12 text-center">
+                            <h2>ZIMRA FISCAL Z-REPORT</h2>
+                            <p class="text-muted">Official Fiscal Day Summary</p>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3 mb-4 border-bottom pb-3">
+                        <div class="col-6">
+                            <strong>Reference:</strong> <span t-field="o.name"/><br/>
+                            <strong>Fiscal Day Number:</strong> <span t-field="o.fiscal_day_no"/><br/>
+                            <strong>Status:</strong> <span t-field="o.state" style="text-transform: uppercase;"/>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong>Opened At:</strong> <span t-field="o.opened_at"/><br/>
+                            <strong>Closed At:</strong> <span t-field="o.closed_at"/><br/>
+                            <strong>Receipt Counter at Close:</strong> <span t-field="o.receipt_counter_closed"/>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-4">Tax Breakdown Summary</h4>
+                    <table class="table table-sm table-bordered mt-2">
+                        <thead>
+                            <tr class="table-light">
+                                <th>Tax Category</th>
+                                <th class="text-end">Sales Amount (Incl. Tax)</th>
+                                <th class="text-end">Tax Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="report_data" t-value="o.get_z_report_data()"/>
+                            <t t-foreach="report_data['tax_summary'].items()" t-as="row">
+                                <tr>
+                                    <td><span t-esc="row[0]"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % row[1]['sales']"/></td>
+                                    <td class="text-end">$<span t-esc="'%.2f' % row[1]['tax']"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <div class="row mt-4">
+                        <div class="col-12 text-end">
+                            <h4>Total Day Revenue: $<span t-esc="'%.2f' % report_data['total_sales']"/></h4>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-muted small border-top pt-3">
+                        <p><strong>Device ID:</strong> <span t-esc="o.company_id.l10n_zw_device_id"/></p>
+                        <p><strong>Company:</strong> <span t-esc="o.company_id.name"/></p>
+                        <p class="mb-0">This document is a certified Z-Report generated electronically via Odoo ZIMRA Integration.</p>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -185,6 +185,31 @@ class L10nZwFiscalDay(models.Model):
                 })
 
         return counters
+        
+    def get_z_report_data(self):
+        """Helper to parse and aggregate receipt queue items for the PDF Z-Report."""
+        self.ensure_one()
+        tax_summary = defaultdict(lambda: {'sales': 0.0, 'tax': 0.0})
+        total_sales = 0.0
+        
+        for item in self.queue_ids:
+            total_sales += item.receipt_total or 0.0
+            if item.taxes_json:
+                try:
+                    taxes = json.loads(item.taxes_json)
+                    for t in taxes:
+                        code = t.get('taxCode', 'A')
+                        pct = t.get('taxPercent', 0)
+                        key = f"Tax Code {code} ({pct}%)"
+                        tax_summary[key]['sales'] += float(t.get('salesAmountWithTax', 0.0))
+                        tax_summary[key]['tax'] += float(t.get('taxAmount', 0.0))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                    
+        return {
+            'tax_summary': dict(tax_summary),
+            'total_sales': total_sales,
+        }
 
     def action_close_day(self):
         """
