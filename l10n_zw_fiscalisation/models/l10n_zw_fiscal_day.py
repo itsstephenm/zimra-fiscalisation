@@ -68,9 +68,12 @@ class L10nZwFiscalDay(models.Model):
         if not key or not key.startswith('/'):
             key = '/mnt/extra-addons/l10n_zw_fiscalisation/certs/private_key.pem'
 
+        # Fallback device ID to 37988 if not configured on company settings yet
+        device_id = company.l10n_zw_device_id if company.l10n_zw_device_id else 37988
+
         return ZimraClient(
             base_url=company.l10n_zw_base_url or 'https://fdmsapitest.zimra.co.zw',
-            device_id=company.l10n_zw_device_id,
+            device_id=device_id,
             cert_path=cert,
             key_path=key,
             device_model_name=company.l10n_zw_device_model_name or 'Virtual Server',
@@ -115,9 +118,11 @@ class L10nZwFiscalDay(models.Model):
     def _compute_fiscal_day_counters(self):
         """
         Aggregates totals from all queue entries linked to this fiscal day to build ZIMRA fiscalCounters.
+
+        ZIMRA's CloseDay requires fiscalDayCounters grouped by currency and tax or payment type.
         """
         self.ensure_one()
-        
+
         sales_by_tax = defaultdict(float)
         tax_by_tax = defaultdict(float)
         balance_by_money = defaultdict(float)
@@ -191,7 +196,7 @@ class L10nZwFiscalDay(models.Model):
             
         company = self.company_id
 
-        # Safety guard
+        # Safety guard: do not allow CloseDay if any receipts are still pending/error
         pending_count = self.env['l10n_zw.receipt.queue'].search_count([
             ('fiscal_day_id', '=', self.id),
             ('status', 'in', ['pending', 'error']),
@@ -203,27 +208,30 @@ class L10nZwFiscalDay(models.Model):
                 f"submitted before closing the day."
             )
 
-        # Count successfully submitted receipts (Fix for missing variable)
         submitted_count = self.env['l10n_zw.receipt.queue'].search_count([
             ('fiscal_day_id', '=', self.id),
         ])
 
         closed_at = fields.Datetime.now()
         closed_at_str = closed_at.strftime('%Y-%m-%dT%H:%M:%S')
-        reconciliation_mode = "AUTO" 
+        reconciliation_mode = "AUTO"  # Always AUTO for online (real-time) devices
 
         client = self._get_zimra_client()
+
+        # Compute Counters
         fiscal_day_counters = self._compute_fiscal_day_counters()
+
+        # Compute Signature
         fiscal_day_date = self.opened_at.strftime('%Y-%m-%d')
-        
         signature_data = client._generate_fiscal_day_signature(
             fiscal_day_no=self.fiscal_day_no,
             fiscal_day_date=fiscal_day_date,
             fiscal_day_counters=fiscal_day_counters,
         )
 
+        # Build precise payload as per FDMS spec for Online CloseDay
         payload = {
-            "deviceID"                : int(company.l10n_zw_device_id),
+            "deviceID"                : int(company.l10n_zw_device_id or 37988),
             "fiscalDayNo"             : self.fiscal_day_no,
             "fiscalDayDate"           : fiscal_day_date,
             "fiscalDayUpdated"        : closed_at_str,
