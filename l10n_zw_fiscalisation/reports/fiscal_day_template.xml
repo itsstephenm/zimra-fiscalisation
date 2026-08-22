@@ -53,7 +53,7 @@
                         </div>
 
                         <div class="mt-5 text-muted small border-top pt-3">
-                            <p><strong>Device ID:</strong> <span t-esc="o.company_id.l10n_zw_device_id"/></p>
+                            <p><strong>Device ID:</strong> <span t-esc="o.company_id.l10n_zw_device_id or '37988'"/></p>
                             <p><strong>Company:</strong> <span t-esc="o.company_id.name"/></p>
                             <p class="mb-0">This document is a certified Z-Report generated electronically via Odoo ZIMRA Integration.</p>
                         </div>
