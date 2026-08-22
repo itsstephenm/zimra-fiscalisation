@@ -30,7 +30,7 @@ def generate_keys_and_csr():
     )
 
     # Save private key securely - adjusting path to go up one level so certs are in the module root
-    cert_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "certs")
+    cert_dir = "/mnt/extra-addons/l10n_zw_fiscalisation/certs"
     os.makedirs(cert_dir, exist_ok=True)
     
     key_path = os.path.join(cert_dir, "private_key.pem")
