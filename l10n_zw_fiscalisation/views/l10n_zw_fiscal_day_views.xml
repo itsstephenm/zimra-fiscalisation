@@ -39,7 +39,7 @@
     </record>
 
     <!-- Fiscal Day List View -->
-    <record id="view_l10n_zw_fiscal_day_tree" model="ir.ui.view">
+    <record id="view_l10n_zw_fiscal_day_list" model="ir.ui.view">
         <field name="name">l10n_zw.fiscal.day.list</field>
         <field name="model">l10n_zw.fiscal.day</field>
         <field name="arch" type="xml">

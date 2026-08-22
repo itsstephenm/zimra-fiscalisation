@@ -13,18 +13,18 @@
                         string="Open ZIMRA Day" 
                         type="object" 
                         class="oe_highlight" 
-                        attrs="{'invisible': ['|', ('state', '!=', 'opened'), ('l10n_zw_fiscal_day_status', '=', 'open')]}"/>
+                        invisible="state != 'opened' or l10n_zw_fiscal_day_status == 'open'"/>
                 
                 <button name="action_l10n_zw_close_fiscal_day" 
                         string="Close ZIMRA Day (Z-Report)" 
                         type="object" 
                         class="btn-warning"
-                        attrs="{'invisible': ['|', ('state', '!=', 'closing_control'), ('l10n_zw_fiscal_day_status', '!=', 'open')]}"/>
+                        invisible="state != 'closing_control' or l10n_zw_fiscal_day_status != 'open'"/>
             </xpath>
             
             <!-- Add a small status indicator in the form -->
             <xpath expr="//group[@name='general']" position="inside">
-                <field name="l10n_zw_fiscal_day_id" attrs="{'invisible': [('l10n_zw_fiscal_day_id', '=', False)]}"/>
+                <field name="l10n_zw_fiscal_day_id" invisible="not l10n_zw_fiscal_day_id"/>
             </xpath>
         </field>
     </record>
