@@ -7,21 +7,19 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.x509.oid import NameOID
 from cryptography import x509
 
-# Configuration
-DEVICE_ID = 37989
+# Configuration - Corrected to match your ZIMRA portal registration
+DEVICE_ID = 37988
 ACTIVATION_KEY = "00868489"
 SERIAL_NO = "VASTSOL-TEST-004"
 
-# Based on standard ZIMRA REST APIs, the public endpoints typically don't have the {deviceID} 
-# in the URL itself (like /api/registerDevice or /Device/v1/RegisterDevice). 
-# We'll try /Device/v1/RegisterDevice first based on your swagger dropdown.
 BASE_URL = "https://fdmsapitest.zimra.co.zw"
 REGISTER_URL = f"{BASE_URL}/Public/v1/{DEVICE_ID}/RegisterDevice"
 
+# Corrected Headers to match ZIMRA specs
 HEADERS = {
     "Content-Type": "application/json",
-    "DeviceModelName": "Server",
-    "DeviceModelVersion": "v1"
+    "DeviceModelName": "Virtual Server",
+    "DeviceModelVersionNo": "v1"
 }
 
 def generate_keys_and_csr():
@@ -31,18 +29,20 @@ def generate_keys_and_csr():
         key_size=2048,
     )
 
-    # Save private key securely
-    os.makedirs("certs", exist_ok=True)
-    with open("certs/private_key.pem", "wb") as f:
+    # Save private key securely - adjusting path to go up one level so certs are in the module root
+    cert_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "certs")
+    os.makedirs(cert_dir, exist_ok=True)
+    
+    key_path = os.path.join(cert_dir, "private_key.pem")
+    with open(key_path, "wb") as f:
         f.write(private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption()
         ))
-    print("Private key saved to certs/private_key.pem")
+    print(f"Private key saved to {key_path}")
 
     print("Generating CSR...")
-    # Zero pad device ID to 10 digits as per spec
     padded_device_id = str(DEVICE_ID).zfill(10)
     cn = f"ZIMRA-{SERIAL_NO}-{padded_device_id}"
     print(f"Using Common Name (CN): {cn}")
@@ -58,13 +58,14 @@ def generate_keys_and_csr():
     csr = builder.sign(private_key, hashes.SHA256())
     csr_pem = csr.public_bytes(serialization.Encoding.PEM).decode('utf-8')
 
-    with open("certs/device_csr.pem", "w") as f:
+    csr_path = os.path.join(cert_dir, "device_csr.pem")
+    with open(csr_path, "w") as f:
         f.write(csr_pem)
-    print("CSR saved to certs/device_csr.pem")
+    print(f"CSR saved to {csr_path}")
     
-    return csr_pem
+    return csr_pem, cert_dir
 
-def register_device(csr_pem):
+def register_device(csr_pem, cert_dir):
     print(f"Sending registration request to {REGISTER_URL}...")
     
     payload = {
@@ -84,9 +85,10 @@ def register_device(csr_pem):
             
             certificate_pem = data.get('certificate')
             if certificate_pem:
-                with open("certs/device_cert.pem", "w") as f:
+                cert_path = os.path.join(cert_dir, "device_cert.pem")
+                with open(cert_path, "w") as f:
                     f.write(certificate_pem)
-                print("Saved ZIMRA official certificate to certs/device_cert.pem")
+                print(f"Saved ZIMRA official certificate to {cert_path}")
             else:
                 print("Warning: No certificate returned in response.")
         else:
@@ -96,7 +98,6 @@ def register_device(csr_pem):
             except Exception:
                 print(response.text)
                 
-            # If 404, suggest alternative URL
             if response.status_code == 404:
                 print("\nSuggestion: The endpoint URL might be different. Let's check Swagger.")
                 
@@ -104,5 +105,5 @@ def register_device(csr_pem):
         print(f"Error during API request: {e}")
 
 if __name__ == "__main__":
-    csr = generate_keys_and_csr()
-    register_device(csr)
+    csr, cert_dir = generate_keys_and_csr()
+    register_device(csr, cert_dir)
