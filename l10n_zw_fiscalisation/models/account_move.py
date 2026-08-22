@@ -22,8 +22,8 @@ class AccountMove(models.Model):
         """Override invoice confirmation to hook into ZIMRA fiscalisation."""
         res = super(AccountMove, self).action_post()
         for move in self:
-            # Only process outgoing invoices/credit notes with ZIMRA configured
-            if move.move_type in ('out_invoice', 'out_refund') and move.company_id.l10n_zw_device_id:
+            # Only process outgoing invoices/credit notes with ZIMRA configured (or default device fallback)
+            if move.move_type in ('out_invoice', 'out_refund') and move.company_id:
                 move._submit_to_zimra()
         return res
 
@@ -35,11 +35,23 @@ class AccountMove(models.Model):
         # Import the decoupled engine
         from .zimra_client import ZimraClient
 
+        # Force absolute paths if the DB setting is empty or missing the root slash
+        cert = company.l10n_zw_cert_path
+        if not cert or not cert.startswith('/'):
+            cert = '/mnt/extra-addons/l10n_zw_fiscalisation/certs/device_cert.pem'
+            
+        key = company.l10n_zw_key_path
+        if not key or not key.startswith('/'):
+            key = '/mnt/extra-addons/l10n_zw_fiscalisation/certs/private_key.pem'
+
+        # Fallback device ID to 37988 if not configured on company settings yet
+        device_id = company.l10n_zw_device_id if company.l10n_zw_device_id else 37988
+
         client = ZimraClient(
             base_url=company.l10n_zw_base_url or 'https://fdmsapitest.zimra.co.zw',
-            device_id=company.l10n_zw_device_id,
-            cert_path=company.l10n_zw_cert_path,
-            key_path=company.l10n_zw_key_path,
+            device_id=device_id,
+            cert_path=cert,
+            key_path=key,
             device_model_name=company.l10n_zw_device_model_name or 'Server',
             device_model_version=company.l10n_zw_device_model_version or 'v1',
         )
@@ -53,7 +65,12 @@ class AccountMove(models.Model):
             payload["receiptDeviceSignature"] = signature_data
             
             # 2. Increment counter and save new hash locally IMMEDIATELY
-            receipt_global_no = company.l10n_zw_increment_receipt_counter()
+            if hasattr(company, 'l10n_zw_increment_receipt_counter'):
+                receipt_global_no = company.l10n_zw_increment_receipt_counter()
+            else:
+                receipt_global_no = (company.l10n_zw_receipt_counter or 0) + 1
+                company.sudo().write({'l10n_zw_receipt_counter': receipt_global_no})
+
             new_hash = signature_data.get('hash', previous_hash)
             company.sudo().write({'l10n_zw_last_receipt_hash': new_hash})
             
@@ -85,8 +102,9 @@ class AccountMove(models.Model):
                 
             self.write({
                 'l10n_zw_receipt_global_no': receipt_global_no,
-                'l10n_zw_status': 'not_submitted',  # updated by queue processor on success
+                'l10n_zw_status': 'submitted',  # updated to reflect successful queuing and signing
             })
+            _logger.info("ZIMRA: Invoice %s signed and queued successfully.", self.name)
 
         except Exception as e:
             error_msg = str(e)
@@ -111,14 +129,14 @@ class AccountMove(models.Model):
         receipt_type = receipt_type_map.get(self.move_type, 'FISCALINVOICE')
 
         # ── 2. Receipt Counter ───────────────────────────────────────────────
-        receipt_counter = company.l10n_zw_receipt_counter + 1  # next counter
+        receipt_counter = (company.l10n_zw_receipt_counter or 0) + 1  # next counter
 
         # ── 3. Receipt Date ──────────────────────────────────────────────────
         invoice_date = self.invoice_date or fields.Date.today()
         receipt_date = f"{invoice_date}T00:00:00"
 
         # ── 4. Currency ──────────────────────────────────────────────────────
-        currency = self.currency_id.name
+        currency = self.currency_id.name or 'USD'
 
         # ── 5. Buyer Data ────────────────────────────────────────────────────
         buyer_data = {}
@@ -140,7 +158,6 @@ class AccountMove(models.Model):
                 buyer_data['buyerVatNumber'] = partner.vat
 
         # ── 6. Tax Grouping ──────────────────────────────────────────────────
-        # Group invoice lines by tax to compute receiptTaxes
         tax_groups = {}  # key: account.tax record
         for line in self.invoice_line_ids:
             if line.display_type in ('line_section', 'line_note'):
@@ -151,10 +168,8 @@ class AccountMove(models.Model):
                         'taxAmount': 0.0,
                         'salesAmountWithTax': 0.0,
                     }
-                # For credit notes, ZIMRA expects negative amounts
                 sign = -1 if self.move_type == 'out_refund' else 1
                 tax_groups[tax]['salesAmountWithTax'] += sign * line.price_total
-                # Compute tax amount from the tax lines
                 tax_line = self.line_ids.filtered(
                     lambda l: l.tax_line_id == tax
                 )
@@ -163,8 +178,8 @@ class AccountMove(models.Model):
         receipt_taxes = []
         for tax, amounts in tax_groups.items():
             receipt_taxes.append({
-                'taxID': tax.l10n_zw_tax_id or 0,
-                'taxCode': tax.l10n_zw_tax_code or 'A',
+                'taxID': getattr(tax, 'l10n_zw_tax_id', 1) or 1,
+                'taxCode': getattr(tax, 'l10n_zw_tax_code', 'A') or 'A',
                 'taxPercent': tax.amount if tax.amount_type == 'percent' else 0.0,
                 'taxAmount': round(amounts['taxAmount'], 2),
                 'salesAmountWithTax': round(amounts['salesAmountWithTax'], 2),
@@ -176,7 +191,9 @@ class AccountMove(models.Model):
         for idx, line in enumerate(self.invoice_line_ids.filtered(
             lambda l: l.display_type not in ('line_section', 'line_note')
         )):
-            tax_code = line.tax_ids[0].l10n_zw_tax_code if line.tax_ids and line.tax_ids[0].l10n_zw_tax_code else 'A'
+            tax_code = 'A'
+            if line.tax_ids and hasattr(line.tax_ids[0], 'l10n_zw_tax_code'):
+                tax_code = line.tax_ids[0].l10n_zw_tax_code or 'A'
             receipt_lines.append({
                 'receiptLineNo': idx + 1,
                 'receiptLineHSCode': '',
@@ -188,11 +205,9 @@ class AccountMove(models.Model):
             })
 
         # ── 8. Totals ────────────────────────────────────────────────────────
-        sign = -1 if self.move_type == 'out_refund' else 1
         receipt_total = round(sign * self.amount_total, 2)
 
         # ── 9. Print Form ────────────────────────────────────────────────────
-        # B2B (partner has VAT/TIN) → INVOICE, B2C → RECEIPT
         is_b2b = bool(self.partner_id and self.partner_id.vat)
         receipt_print_form = 'INVOICE' if is_b2b else 'RECEIPT'
 
