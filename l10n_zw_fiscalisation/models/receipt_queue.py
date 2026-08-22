@@ -7,10 +7,8 @@ _logger = logging.getLogger(__name__)
 class L10nZwReceiptQueue(models.Model):
     """
     Offline Queuing Model for ZIMRA Fiscalisation.
-    Ensures that all receipts (from Invoices or POS) are submitted strictly in the 
-    order of their receiptCounter, handling hash chaining correctly even if the 
-    network drops.
-    Each queue entry is linked to its fiscal day for accurate Z-Report aggregation.
+    Ensures that all receipts are submitted strictly in the 
+    order of their receiptCounter, handling hash chaining correctly.
     """
     _name = 'l10n_zw.receipt.queue'
     _description = 'ZIMRA Receipt Queue'
@@ -18,17 +16,13 @@ class L10nZwReceiptQueue(models.Model):
 
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
     
-    # Store references to the original document
     move_id = fields.Many2one('account.move', string='Invoice', ondelete='cascade')
     pos_order_id = fields.Many2one('pos.order', string='POS Order', ondelete='cascade')
-    
-    # Link to the open fiscal day so CloseDay can aggregate exact taxes from this day's receipts
     fiscal_day_id = fields.Many2one('l10n_zw.fiscal.day', string='Fiscal Day', index=True, ondelete='restrict')
     
     receipt_global_no = fields.Integer(string='Receipt No.', required=True, index=True)
-    receipt_currency = fields.Char(string='Currency', help='ISO currency code of the transaction (USD, ZWG, etc.)')
-    # Denormalised tax snapshot for CloseDay aggregation — avoids re-parsing payload JSON at close time
-    taxes_json = fields.Text(string='Receipt Taxes JSON', help='receiptTaxes array snapshot from the signed payload.')
+    receipt_currency = fields.Char(string='Currency')
+    taxes_json = fields.Text(string='Receipt Taxes JSON')
     receipt_total = fields.Float(string='Receipt Total', digits=(18, 2))
     payload_json = fields.Text(string='Payload JSON', required=True)
     
@@ -47,60 +41,68 @@ class L10nZwReceiptQueue(models.Model):
         Cron job method to process pending receipts.
         Must process strictly in receipt_global_no order per company.
         """
-        companies = self.search([('status', 'in', ['pending', 'error'])]).mapped('company_id')
+        queue_items = self.search([
+            ('status', 'in', ['pending', 'error'])
+        ], order='receipt_global_no asc')
         
-        for company in companies:
-            # Get pending receipts for this company, ordered sequentially
-            queue_items = self.search([
-                ('company_id', '=', company.id),
-                ('status', 'in', ['pending', 'error'])
-            ], order='receipt_global_no asc')
-            
-            if not queue_items:
+        for item in queue_items:
+            company = item.company_id
+            if not company:
                 continue
 
             from .zimra_client import ZimraClient
+            
+            cert = company.l10n_zw_cert_path
+            if not cert or not cert.startswith('/'):
+                cert = '/mnt/extra-addons/l10n_zw_fiscalisation/certs/device_cert.pem'
+                
+            key = company.l10n_zw_key_path
+            if not key or not key.startswith('/'):
+                key = '/mnt/extra-addons/l10n_zw_fiscalisation/certs/private_key.pem'
+
+            device_id = company.l10n_zw_device_id if company.l10n_zw_device_id else 37988
+
             client = ZimraClient(
                 base_url=company.l10n_zw_base_url or 'https://fdmsapitest.zimra.co.zw',
-                device_id=company.l10n_zw_device_id,
-                cert_path=company.l10n_zw_cert_path,
-                key_path=company.l10n_zw_key_path,
+                device_id=device_id,
+                cert_path=cert,
+                key_path=key,
                 device_model_name=company.l10n_zw_device_model_name or 'Server',
                 device_model_version=company.l10n_zw_device_model_version or 'v1',
             )
 
-            for item in queue_items:
-                try:
-                    payload = json.loads(item.payload_json)
-                    # Submit directly (the payload already contains the signature/hash)
-                    result = client._post_receipt(payload)
-                    
-                    item.write({
-                        'status': 'submitted',
-                        'error_message': False
-                    })
-                    
-                    # Update the original document
-                    vals = {
-                        'l10n_zw_receipt_id': result.get('receiptID', ''),
-                        'l10n_zw_operation_id': result.get('operationID', ''),
-                        'l10n_zw_status': 'submitted',
-                        'l10n_zw_error_message': False,
-                    }
-                    if item.move_id:
-                        item.move_id.write(vals)
-                    if item.pos_order_id:
-                        item.pos_order_id.write(vals)
+            try:
+                payload = json.loads(item.payload_json)
+                result = client._post_receipt(payload) or {}
+                
+                item.write({
+                    'status': 'submitted',
+                    'error_message': False
+                })
+                
+                # Extract ID fields flexibly supporting multiple casing formats
+                receipt_id = str(result.get('receiptID') or result.get('receiptId') or result.get('id') or '')
+                operation_id = str(result.get('operationID') or result.get('operationId') or '')
 
-                    _logger.info("ZIMRA Queue: Successfully submitted receipt %s", item.receipt_global_no)
-                    
-                except Exception as e:
-                    error_msg = str(e)
-                    item.write({
-                        'status': 'error',
-                        'error_message': error_msg,
-                        'retry_count': item.retry_count + 1
-                    })
-                    _logger.error("ZIMRA Queue: Failed to submit receipt %s: %s", item.receipt_global_no, error_msg)
-                    # STOP processing for this company to maintain strict hash chain sequence!
-                    break
+                vals = {
+                    'l10n_zw_receipt_id': receipt_id,
+                    'l10n_zw_operation_id': operation_id,
+                    'l10n_zw_status': 'submitted',
+                    'l10n_zw_error_message': False,
+                }
+                if item.move_id:
+                    item.move_id.write(vals)
+                if item.pos_order_id:
+                    item.pos_order_id.write(vals)
+
+                _logger.info("ZIMRA Queue: Successfully submitted receipt %s", item.receipt_global_no)
+                
+            except Exception as e:
+                error_msg = str(e)
+                item.write({
+                    'status': 'error',
+                    'error_message': error_msg,
+                    'retry_count': item.retry_count + 1
+                })
+                _logger.error("ZIMRA Queue: Failed to submit receipt %s: %s", item.receipt_global_no, error_msg)
+                break
