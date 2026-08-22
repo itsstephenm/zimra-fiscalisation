@@ -8,9 +8,9 @@ from cryptography.x509.oid import NameOID
 from cryptography import x509
 
 # Configuration
-DEVICE_ID = 37670
-ACTIVATION_KEY = "00426718"
-SERIAL_NO = "VASTSOL-TEST-003"
+DEVICE_ID = 37989
+ACTIVATION_KEY = "00868489"
+SERIAL_NO = "VASTSOL-TEST-004"
 
 # Based on standard ZIMRA REST APIs, the public endpoints typically don't have the {deviceID} 
 # in the URL itself (like /api/registerDevice or /Device/v1/RegisterDevice). 
